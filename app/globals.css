@@ -80,7 +80,7 @@ input, textarea { font-family: inherit; }
 @media (max-width: 440px) {
   .phone { max-width: 100vw; max-height: 100svh; }
   .main-card {
-    height: calc(100svh - 32px);
+    height: calc(100svh - 32px - env(safe-area-inset-bottom));
     max-height: none;
   }
 }
