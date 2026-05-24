@@ -4,7 +4,7 @@ import {
   CATEGORIES, CoffeeIcon, SlimeSprite,
   MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph,
   MenuGlyph, ChartGlyph, BackGlyph, PlusGlyph, SaveGlyph, TrashGlyph, ShareGlyph, EditGlyph,
-  PeopleGlyph, SplitGlyph,
+  PeopleGlyph, SplitGlyph, CheckGlyph,
 } from './icons';
 import {
   PixelButton, IconButton, CardHeader, MainCard, Sheet, Calendar, TabBtn,
@@ -12,8 +12,10 @@ import {
 } from './ui';
 import { GroupsTabContent } from './groups';
 
-export function HomeScreen({ expenses, groups, onAdd, onOpen, onStats, onMenu, onCreateGroup, onOpenGroup }) {
-  const [tab, setTab] = useState('expenses');
+export function HomeScreen({ expenses, groups, onAdd, onOpen, onStats, onMenu, onCreateGroup, onOpenGroup, onJoinGroup }) {
+  const [tab, setTab]         = useState('expenses');
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
 
   const monthTotal = useMemo(() => {
     const now = new Date();
@@ -41,7 +43,10 @@ export function HomeScreen({ expenses, groups, onAdd, onOpen, onStats, onMenu, o
 
   const footer = tab === 'expenses'
     ? React.createElement(PixelButton, { onClick: onAdd, icon: React.createElement(PlusGlyph, { size: 16 }) }, 'ADD EXPENSE')
-    : React.createElement(PixelButton, { onClick: onCreateGroup, icon: React.createElement(PlusGlyph, { size: 16 }) }, 'NEW GROUP');
+    : React.createElement('div', { style: { display: 'flex', gap: 8 } },
+        React.createElement(PixelButton, { onClick: onCreateGroup, icon: React.createElement(PlusGlyph, { size: 16 }), style: { flex: 1 } }, 'NEW GROUP'),
+        React.createElement(PixelButton, { ghost: true, onClick: () => onJoinGroup && setJoinOpen(true), style: { flex: 1 } }, 'JOIN GROUP')
+      );
 
   let content;
   if (tab === 'expenses') {
@@ -70,8 +75,38 @@ export function HomeScreen({ expenses, groups, onAdd, onOpen, onStats, onMenu, o
     content = React.createElement(GroupsTabContent, { groups: groups || [], onOpenGroup });
   }
 
+  function handleJoin() {
+    if (joinCode.trim().length < 6) return;
+    onJoinGroup(joinCode.trim());
+    setJoinOpen(false);
+    setJoinCode('');
+  }
+
   return React.createElement('div', { className: 'screen' },
-    React.createElement(MainCard, { header, footer }, content)
+    React.createElement(MainCard, { header, footer }, content),
+    joinOpen && React.createElement(Sheet, { title: 'JOIN GROUP', onClose: () => setJoinOpen(false) },
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
+        React.createElement('div', { className: 'empty-sub', style: { textAlign: 'left' } }, 'ENTER THE 6-DIGIT CODE SHARED BY THE GROUP CREATOR'),
+        React.createElement('div', { className: 'field' },
+          React.createElement('div', { className: 'field-inner' },
+            React.createElement('input', {
+              type: 'text',
+              value: joinCode,
+              placeholder: 'E.G. ABC123',
+              maxLength: 6,
+              style: { textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: 16, textAlign: 'center' },
+              onChange: e => setJoinCode(e.target.value.toUpperCase()),
+              onKeyDown: e => { if (e.key === 'Enter') handleJoin(); },
+            })
+          )
+        ),
+        React.createElement(PixelButton, {
+          onClick: handleJoin,
+          disabled: joinCode.trim().length < 6,
+          icon: React.createElement(CheckGlyph, { size: 14 }),
+        }, 'JOIN')
+      )
+    )
   );
 }
 
@@ -501,12 +536,13 @@ export function StatsScreen({ expenses, onBack }) {
   );
 }
 
-export function MenuSheet({ onClose, onShareAll, onResetDemo, onClearAll }) {
+export function MenuSheet({ onClose, onShareAll, onResetDemo, onClearAll, onSignOut }) {
   return React.createElement(Sheet, { title: 'MENU', onClose },
     React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
       React.createElement(PixelButton, { ghost: true, onClick: onShareAll, icon: React.createElement(ShareGlyph, { size: 14 }) }, 'SHARE SPEND LOG'),
       React.createElement(PixelButton, { ghost: true, onClick: onResetDemo }, 'RESET DEMO DATA'),
-      React.createElement(PixelButton, { danger: true, onClick: onClearAll, icon: React.createElement(TrashGlyph, { size: 14 }) }, 'CLEAR ALL')
+      React.createElement(PixelButton, { danger: true, onClick: onClearAll, icon: React.createElement(TrashGlyph, { size: 14 }) }, 'CLEAR ALL'),
+      React.createElement(PixelButton, { ghost: true, onClick: onSignOut }, 'SIGN OUT')
     )
   );
 }

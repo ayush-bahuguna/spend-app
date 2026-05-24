@@ -313,8 +313,34 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
     })
   );
 
+  function copyCode() {
+    try {
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(group.joinCode);
+      else {
+        const ta = document.createElement('textarea');
+        ta.value = group.joinCode; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+      }
+    } catch {}
+  }
+
+  const joinCodeRow = group.joinCode
+    ? React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
+        React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'JOIN CODE'),
+        React.createElement('div', {
+          style: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
+          onClick: copyCode,
+          title: 'Copy code',
+        },
+          React.createElement('div', { className: 'font-pixel', style: { fontSize: 13, letterSpacing: '0.2em', color: 'var(--ink)' } }, group.joinCode),
+          React.createElement('div', { className: 'font-pixel', style: { fontSize: 8, color: 'var(--green-dark)', background: 'var(--cream-shade)', padding: '3px 6px' } }, 'COPY')
+        )
+      )
+    : null;
+
   return React.createElement('div', { className: 'screen' },
     React.createElement(MainCard, { header, footer },
+      joinCodeRow,
       tabBar,
       React.createElement('div', { style: { height: 4 } }),
       tab === 'expenses' ? expensesContent : balancesContent

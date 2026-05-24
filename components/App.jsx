@@ -1,12 +1,18 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Toast } from './ui';
+import { SlimeSprite } from './icons';
 import {
   HomeScreen, AddEditScreen, DetailScreen, StatsScreen, MenuSheet, ShareSheet,
 } from './screens';
 import {
   CreateGroupScreen, GroupDetailScreen, GroupAddExpenseScreen, GroupExpenseDetailScreen,
 } from './groups';
+import { getSupabase } from '../lib/supabase';
+import {
+  fetchExpenses, upsertExpense, deleteExpense, upsertManyExpenses,
+  fetchGroups, createGroup, deleteGroup, addGroupExpense, joinGroupByCode, upsertManyGroups,
+} from '../lib/db';
 
 const STORAGE_KEY = 'spend_expenses_v1';
 const GROUPS_KEY  = 'spend_groups_v1';
@@ -27,74 +33,116 @@ const SAMPLE = [
   { id: 's6', amount: 60,   category: 'food',     date: makeDate(5), note: 'MORNING COFFEE', iconVariant: 'coffee' },
 ];
 
-const SAMPLE_GROUPS = [
-  {
-    id: 'sg1',
-    name: 'TRIP TO GOA',
-    createdAt: makeDate(10),
-    members: [
-      { id: 'mg1', name: 'YOU' },
-      { id: 'mg2', name: 'PRIYA' },
-      { id: 'mg3', name: 'RAHUL' },
-    ],
-    expenses: [
-      {
-        id: 'sge1', amount: 1800, category: 'travel', date: makeDate(8),
-        note: 'FLIGHT TICKETS', paidById: 'mg1', splitType: 'equal',
-        splits: [
-          { memberId: 'mg1', name: 'YOU',   value: 600 },
-          { memberId: 'mg2', name: 'PRIYA', value: 600 },
-          { memberId: 'mg3', name: 'RAHUL', value: 600 },
-        ],
-      },
-      {
-        id: 'sge2', amount: 960, category: 'food', date: makeDate(7),
-        note: 'DINNER', paidById: 'mg2', splitType: 'equal',
-        splits: [
-          { memberId: 'mg1', name: 'YOU',   value: 320 },
-          { memberId: 'mg2', name: 'PRIYA', value: 320 },
-          { memberId: 'mg3', name: 'RAHUL', value: 320 },
-        ],
-      },
-    ],
-  },
-];
+// ─── localStorage helpers (no SAMPLE fallback — just cache) ─────────────────
 
-function loadExpenses() {
+function readLocalExpenses() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return SAMPLE;
+    if (!raw) return [];
     const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : SAMPLE;
-  } catch { return SAMPLE; }
+    return Array.isArray(arr) ? arr.filter(e => !String(e.id).startsWith('s')) : [];
+  } catch { return []; }
 }
-function saveExpenses(list) {
+function writeLocalExpenses(list) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch {}
 }
-
-function loadGroups() {
+function readLocalGroups() {
   try {
     const raw = localStorage.getItem(GROUPS_KEY);
-    if (!raw) return SAMPLE_GROUPS;
+    if (!raw) return [];
     const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : SAMPLE_GROUPS;
-  } catch { return SAMPLE_GROUPS; }
+    return Array.isArray(arr) ? arr.filter(g => !String(g.id).startsWith('sg')) : [];
+  } catch { return []; }
 }
-function saveGroups(list) {
+function writeLocalGroups(list) {
   try { localStorage.setItem(GROUPS_KEY, JSON.stringify(list)); } catch {}
 }
 
+async function maybeRunMigration(userId, cachedExp, cachedGroups) {
+  const key = 'spend_migrated_' + userId;
+  if (localStorage.getItem(key)) return;
+  try {
+    await Promise.all([
+      upsertManyExpenses(userId, cachedExp),
+      upsertManyGroups(userId, cachedGroups),
+    ]);
+    localStorage.setItem(key, '1');
+  } catch (e) {
+    console.warn('Migration skipped:', e);
+  }
+}
+
+// ─── App ────────────────────────────────────────────────────────────────────
+
 export default function App() {
-  const [expenses, setExpenses] = useState(loadExpenses);
-  const [groups,   setGroups]   = useState(loadGroups);
-  const [route,    setRoute]    = useState({ name: 'home' });
-  const [toast,    setToast]    = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [expenses,    setExpenses]    = useState([]);
+  const [groups,      setGroups]      = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [route,       setRoute]       = useState({ name: 'home' });
+  const [toast,       setToast]       = useState('');
+  const [menuOpen,    setMenuOpen]    = useState(false);
   const [shareTarget, setShareTarget] = useState(null);
+  const userIdRef   = useRef(null);
+  const realtimeRef = useRef(null);
 
-  useEffect(() => { saveExpenses(expenses); }, [expenses]);
-  useEffect(() => { saveGroups(groups); },   [groups]);
+  // ── Init: load data + realtime ──────────────────────────────────────────
+  useEffect(() => {
+    const supabase = getSupabase();
+    let cancelled = false;
 
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      const userId = session.user.id;
+      userIdRef.current = userId;
+
+      // Warm-start from cache
+      const cachedExp    = readLocalExpenses();
+      const cachedGroups = readLocalGroups();
+      if (cachedExp.length)    setExpenses(cachedExp);
+      if (cachedGroups.length) setGroups(cachedGroups);
+
+      // One-time migration of pre-auth localStorage data
+      await maybeRunMigration(userId, cachedExp, cachedGroups);
+
+      // Fetch from Supabase (source of truth)
+      const [remoteExp, remoteGroups] = await Promise.all([
+        fetchExpenses(userId),
+        fetchGroups(userId),
+      ]);
+      if (cancelled) return;
+
+      const finalExp    = remoteExp.length    ? remoteExp    : (cachedExp.length    ? cachedExp    : SAMPLE);
+      const finalGroups = remoteGroups.length ? remoteGroups : (cachedGroups.length ? cachedGroups : []);
+
+      setExpenses(finalExp);
+      setGroups(finalGroups);
+      writeLocalExpenses(finalExp);
+      writeLocalGroups(finalGroups);
+      setDataLoading(false);
+
+      // Realtime: refetch groups on any group_expenses change
+      realtimeRef.current = supabase
+        .channel('group_expenses_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'group_expenses' }, async () => {
+          const updated = await fetchGroups(userId);
+          if (!cancelled) {
+            setGroups(updated);
+            writeLocalGroups(updated);
+          }
+        })
+        .subscribe();
+    }
+
+    init().catch(console.error);
+
+    return () => {
+      cancelled = true;
+      realtimeRef.current?.unsubscribe();
+    };
+  }, []);
+
+  // Route persistence
   useEffect(() => {
     try {
       const r = localStorage.getItem('spend_route_v1');
@@ -105,33 +153,66 @@ export default function App() {
     try { localStorage.setItem('spend_route_v1', JSON.stringify(route)); } catch {}
   }, [route]);
 
-  const goHome          = useCallback(() => setRoute({ name: 'home' }), []);
-  const goAdd           = useCallback(() => setRoute({ name: 'add' }), []);
-  const goEdit          = useCallback((id) => setRoute({ name: 'edit', id }), []);
-  const goDetail        = useCallback((id) => setRoute({ name: 'detail', id }), []);
-  const goStats         = useCallback(() => setRoute({ name: 'stats' }), []);
-  const goCreateGroup   = useCallback(() => setRoute({ name: 'create-group' }), []);
-  const goGroupDetail   = useCallback((id) => setRoute({ name: 'group-detail', id }), []);
-  const goGroupAddExp     = useCallback((id) => setRoute({ name: 'group-add-expense', id }), []);
-  const goGroupExpDetail  = useCallback((groupId, expId) => setRoute({ name: 'group-expense-detail', groupId, expId }), []);
+  // ── Navigation ───────────────────────────────────────────────────────────
+  const goHome         = useCallback(() => setRoute({ name: 'home' }), []);
+  const goAdd          = useCallback(() => setRoute({ name: 'add' }), []);
+  const goEdit         = useCallback((id) => setRoute({ name: 'edit', id }), []);
+  const goDetail       = useCallback((id) => setRoute({ name: 'detail', id }), []);
+  const goStats        = useCallback(() => setRoute({ name: 'stats' }), []);
+  const goCreateGroup  = useCallback(() => setRoute({ name: 'create-group' }), []);
+  const goGroupDetail  = useCallback((id) => setRoute({ name: 'group-detail', id }), []);
+  const goGroupAddExp  = useCallback((id) => setRoute({ name: 'group-add-expense', id }), []);
+  const goGroupExpDetail = useCallback((groupId, expId) => setRoute({ name: 'group-expense-detail', groupId, expId }), []);
 
+  // ── Expense mutations ────────────────────────────────────────────────────
   function handleSave(expense) {
+    let next;
     setExpenses(prev => {
       const idx = prev.findIndex(e => e.id === expense.id);
-      if (idx >= 0) { const next = [...prev]; next[idx] = expense; return next; }
-      return [expense, ...prev];
+      next = idx >= 0 ? prev.map((e, i) => i === idx ? expense : e) : [expense, ...prev];
+      return next;
     });
+    setTimeout(() => {
+      writeLocalExpenses(next);
+      if (userIdRef.current) upsertExpense(userIdRef.current, expense).catch(console.error);
+    }, 0);
     setToast(route.name === 'edit' ? 'EXPENSE UPDATED' : 'EXPENSE ADDED');
     goHome();
   }
+
   function handleDelete(id) {
-    setExpenses(prev => prev.filter(e => e.id !== id));
+    setExpenses(prev => {
+      const next = prev.filter(e => e.id !== id);
+      writeLocalExpenses(next);
+      return next;
+    });
+    if (userIdRef.current) deleteExpense(id).catch(console.error);
     setToast('EXPENSE DELETED');
     goHome();
   }
-  function handleClearAll()  { setExpenses([]); setMenuOpen(false); setToast('ALL CLEARED'); goHome(); }
-  function handleResetDemo() { setExpenses(SAMPLE); setGroups(SAMPLE_GROUPS); setMenuOpen(false); setToast('DEMO DATA RESET'); goHome(); }
-  function handleShareAll()  {
+
+  async function handleClearAll() {
+    setExpenses([]);
+    writeLocalExpenses([]);
+    if (userIdRef.current) {
+      getSupabase().from('expenses').delete().eq('user_id', userIdRef.current).catch(console.error);
+    }
+    setMenuOpen(false);
+    setToast('ALL CLEARED');
+    goHome();
+  }
+
+  function handleResetDemo() {
+    setExpenses(SAMPLE);
+    setGroups([]);
+    writeLocalExpenses(SAMPLE);
+    writeLocalGroups([]);
+    setMenuOpen(false);
+    setToast('DEMO DATA RESET');
+    goHome();
+  }
+
+  function handleShareAll() {
     setMenuOpen(false);
     const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
     const text = `My spend log: ${expenses.length} entries totalling ₹${Math.round(total).toLocaleString('en-IN')}`;
@@ -139,25 +220,70 @@ export default function App() {
     setToast('LOG COPIED');
   }
 
-  function handleSaveGroup(group) {
-    setGroups(prev => [group, ...prev]);
+  // ── Group mutations ──────────────────────────────────────────────────────
+  async function handleSaveGroup(group) {
+    const withCode = userIdRef.current
+      ? await createGroup(userIdRef.current, group).catch(() => group)
+      : group;
+    setGroups(prev => {
+      const next = [withCode, ...prev];
+      writeLocalGroups(next);
+      return next;
+    });
     setToast('GROUP CREATED');
-    goGroupDetail(group.id);
+    goGroupDetail(withCode.id);
   }
+
   function handleDeleteGroup(id) {
-    setGroups(prev => prev.filter(g => g.id !== id));
+    setGroups(prev => {
+      const next = prev.filter(g => g.id !== id);
+      writeLocalGroups(next);
+      return next;
+    });
+    if (userIdRef.current) deleteGroup(id).catch(console.error);
     setToast('GROUP DELETED');
     goHome();
   }
+
   function handleSaveGroupExpense(groupId, expense) {
-    setGroups(prev => prev.map(g => {
-      if (g.id !== groupId) return g;
-      return { ...g, expenses: [...(g.expenses || []), expense] };
-    }));
+    setGroups(prev => {
+      const next = prev.map(g => {
+        if (g.id !== groupId) return g;
+        return { ...g, expenses: [expense, ...(g.expenses || [])] };
+      });
+      writeLocalGroups(next);
+      return next;
+    });
+    if (userIdRef.current) addGroupExpense(groupId, expense).catch(console.error);
     setToast('EXPENSE ADDED');
     goGroupDetail(groupId);
   }
 
+  async function handleJoinGroup(code) {
+    if (!userIdRef.current) return;
+    try {
+      const group = await joinGroupByCode(userIdRef.current, code);
+      if (!group) { setToast('INVALID CODE'); return; }
+      setGroups(prev => {
+        const already = prev.find(g => g.id === group.id);
+        const next = already ? prev : [group, ...prev];
+        writeLocalGroups(next);
+        return next;
+      });
+      setToast('GROUP JOINED!');
+      goGroupDetail(group.id);
+    } catch {
+      setToast('INVALID CODE');
+    }
+  }
+
+  async function handleSignOut() {
+    realtimeRef.current?.unsubscribe();
+    setMenuOpen(false);
+    await getSupabase().auth.signOut();
+  }
+
+  // ── Clipboard ────────────────────────────────────────────────────────────
   function copyToClipboard(s) {
     try {
       if (navigator.clipboard?.writeText) navigator.clipboard.writeText(s);
@@ -169,24 +295,37 @@ export default function App() {
     } catch {}
   }
 
+  // ── Guard: stale routes ──────────────────────────────────────────────────
   const currentExpense = (route.name === 'detail' || route.name === 'edit')
     ? expenses.find(e => e.id === route.id) : null;
   const currentGroup = (route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail')
     ? groups.find(g => g.id === (route.id || route.groupId)) : null;
 
   useEffect(() => {
-    if ((route.name === 'detail' || route.name === 'edit') && !currentExpense) setRoute({ name: 'home' });
-  }, [route, currentExpense]);
+    if ((route.name === 'detail' || route.name === 'edit') && !currentExpense && !dataLoading) setRoute({ name: 'home' });
+  }, [route, currentExpense, dataLoading]);
   useEffect(() => {
-    if ((route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail') && !currentGroup) setRoute({ name: 'home' });
-  }, [route, currentGroup]);
+    if ((route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail') && !currentGroup && !dataLoading) setRoute({ name: 'home' });
+  }, [route, currentGroup, dataLoading]);
 
+  // ── Loading screen ───────────────────────────────────────────────────────
+  if (dataLoading) {
+    return React.createElement('div', { className: 'screen', style: { display: 'grid', placeItems: 'center' } },
+      React.createElement('div', { className: 'empty-state' },
+        React.createElement('div', { className: 'bob' }, React.createElement(SlimeSprite, { size: 80 })),
+        React.createElement('div', { className: 'empty-title' }, 'LOADING...')
+      )
+    );
+  }
+
+  // ── Screen routing ───────────────────────────────────────────────────────
   let screen;
   if (route.name === 'home') {
     screen = React.createElement(HomeScreen, {
       expenses, groups,
       onAdd: goAdd, onOpen: goDetail, onStats: goStats, onMenu: () => setMenuOpen(true),
       onCreateGroup: goCreateGroup, onOpenGroup: goGroupDetail,
+      onJoinGroup: handleJoinGroup,
     });
   } else if (route.name === 'add') {
     screen = React.createElement(AddEditScreen, { mode: 'add', onSave: handleSave, onCancel: goHome });
@@ -240,6 +379,7 @@ export default function App() {
       onShareAll: handleShareAll,
       onResetDemo: handleResetDemo,
       onClearAll: handleClearAll,
+      onSignOut: handleSignOut,
     }),
     shareTarget && React.createElement(ShareSheet, {
       expense: shareTarget,

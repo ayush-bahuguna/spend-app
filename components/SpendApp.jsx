@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import AuthGate from './AuthGate';
 import App from './App';
 
 export default function SpendApp() {
@@ -7,7 +8,9 @@ export default function SpendApp() {
     <div className="app-stage">
       <div className="phone">
         <div className="landscape"></div>
-        <App />
+        <AuthGate>
+          <App />
+        </AuthGate>
       </div>
     </div>
   );
