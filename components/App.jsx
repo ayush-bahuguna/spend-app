@@ -11,7 +11,7 @@ import {
 import { getSupabase } from '../lib/supabase';
 import {
   fetchExpenses, upsertExpense, deleteExpense, upsertManyExpenses,
-  fetchGroups, createGroup, deleteGroup, addGroupExpense, joinGroupByCode, upsertManyGroups,
+  fetchGroups, createGroup, deleteGroup, addGroupExpense, joinGroupByCode, upsertManyGroups, updateGroupJoinCode,
 } from '../lib/db';
 
 const STORAGE_KEY = 'spend_expenses_v1';
@@ -250,6 +250,21 @@ export default function App() {
     goHome();
   }
 
+  async function handleGenerateCode(groupId) {
+    try {
+      const code = await updateGroupJoinCode(groupId);
+      setGroups(prev => {
+        const next = prev.map(g => g.id === groupId ? { ...g, joinCode: code } : g);
+        writeLocalGroups(next);
+        return next;
+      });
+      setToast('CODE GENERATED!');
+    } catch (e) {
+      console.error(e);
+      setToast('FAILED TO GENERATE');
+    }
+  }
+
   function handleSaveGroupExpense(groupId, expense) {
     setGroups(prev => {
       const next = prev.map(g => {
@@ -359,6 +374,7 @@ export default function App() {
       onAddExpense: () => goGroupAddExp(currentGroup.id),
       onDeleteGroup: () => handleDeleteGroup(currentGroup.id),
       onOpenExpense: (expId) => goGroupExpDetail(currentGroup.id, expId),
+      onGenerateCode: () => handleGenerateCode(currentGroup.id),
     });
   } else if (route.name === 'group-expense-detail' && currentGroup) {
     const currentGroupExp = (currentGroup.expenses || []).find(e => e.id === route.expId);

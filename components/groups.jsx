@@ -246,10 +246,11 @@ function GroupExpenseCard({ exp, group, onClick }) {
   );
 }
 
-export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, onOpenExpense }) {
+export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode }) {
   const [tab, setTab] = useState('expenses');
   const [shareLabel, setShareLabel] = useState('INVITE');
   const [codeCopied, setCodeCopied] = useState(false);
+  const [deleteSheet, setDeleteSheet] = useState(false);
   const balances = useMemo(() => calcBalances(group), [group]);
   const total = (group.expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
   const title = group.name.length > 11 ? group.name.slice(0, 11) + '…' : group.name;
@@ -278,7 +279,7 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
   const header = React.createElement(CardHeader, {
     title, subtitle: group.members.length + ' MEMBERS',
     left: React.createElement(IconButton, { onClick: onBack }, React.createElement(BackGlyph, { size: 18 })),
-    right: React.createElement(IconButton, { onClick: onDeleteGroup }, React.createElement(TrashGlyph, { size: 16 })),
+    right: React.createElement(IconButton, { onClick: () => setDeleteSheet(true), style: { color: '#c84a3a' } }, React.createElement(TrashGlyph, { size: 16 })),
   });
 
   const footer = group.joinCode
@@ -362,10 +363,10 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
     } catch {}
   }
 
-  const joinCodeRow = group.joinCode
-    ? React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
-        React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'INVITE CODE'),
-        React.createElement('div', {
+  const joinCodeRow = React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
+    React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'INVITE CODE'),
+    group.joinCode
+      ? React.createElement('div', {
           style: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
           onClick: copyCode,
           title: 'Tap to copy code',
@@ -378,8 +379,12 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
             transition: 'all 0.15s',
           } }, codeCopied ? 'COPIED!' : 'TAP')
         )
-      )
-    : null;
+      : React.createElement('div', {
+          className: 'font-pixel',
+          style: { fontSize: 8, color: 'var(--green-dark)', background: 'var(--cream-shade)', padding: '4px 8px', cursor: 'pointer' },
+          onClick: onGenerateCode,
+        }, 'GENERATE CODE')
+  );
 
   return React.createElement('div', { className: 'screen' },
     React.createElement(MainCard, { header, footer },
@@ -387,6 +392,19 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
       tabBar,
       React.createElement('div', { style: { height: 4 } }),
       tab === 'expenses' ? expensesContent : balancesContent
+    ),
+    deleteSheet && React.createElement(Sheet, { title: 'DELETE GROUP?', onClose: () => setDeleteSheet(false) },
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+        React.createElement('div', { className: 'empty-sub', style: { textAlign: 'left' } },
+          'THIS WILL DELETE "' + group.name + '" AND ALL ITS EXPENSES. THIS CANNOT BE UNDONE.'
+        ),
+        React.createElement(PixelButton, {
+          danger: true,
+          onClick: () => { setDeleteSheet(false); onDeleteGroup(); },
+          icon: React.createElement(TrashGlyph, { size: 14 }),
+        }, 'YES, DELETE'),
+        React.createElement(PixelButton, { ghost: true, onClick: () => setDeleteSheet(false) }, 'CANCEL')
+      )
     )
   );
 }
