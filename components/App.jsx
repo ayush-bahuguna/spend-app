@@ -97,7 +97,9 @@ export default function App() {
       const userId = session.user.id;
       userIdRef.current = userId;
       const userMeta = session.user.user_metadata;
-      userNameRef.current = (userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || 'ME').toUpperCase();
+      const rawName = userMeta?.given_name || userMeta?.first_name
+        || (userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || 'ME').split(/\s+/)[0];
+      userNameRef.current = rawName.toUpperCase();
 
       // Warm-start from cache
       const cachedExp    = readLocalExpenses();
