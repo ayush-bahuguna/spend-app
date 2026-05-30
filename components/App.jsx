@@ -164,6 +164,20 @@ export default function App() {
     try { localStorage.setItem('spend_route_v1', JSON.stringify(route)); } catch {}
   }, [route]);
 
+  // Refetch groups when app becomes visible (tab switch, phone un-lock, etc.)
+  // This is a reliable fallback when the realtime subscription has dropped.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible' && userIdRef.current) {
+        fetchGroups(userIdRef.current)
+          .then(updated => { setGroups(updated); writeLocalGroups(updated); })
+          .catch(() => {});
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
   // ── Navigation ───────────────────────────────────────────────────────────
   const goHome         = useCallback(() => setRoute({ name: 'home' }), []);
   const goAdd          = useCallback(() => setRoute({ name: 'add' }), []);
@@ -279,7 +293,8 @@ export default function App() {
     setRoute({ name: 'car' });
   }
 
-  function handleSaveGroupExpense(groupId, expense) {
+  async function handleSaveGroupExpense(groupId, expense) {
+    // Optimistic update
     setGroups(prev => {
       const next = prev.map(g => {
         if (g.id !== groupId) return g;
@@ -288,9 +303,18 @@ export default function App() {
       writeLocalGroups(next);
       return next;
     });
-    if (userIdRef.current) addGroupExpense(groupId, expense).catch(console.error);
-    setToast('EXPENSE ADDED');
     goGroupDetail(groupId);
+    if (userIdRef.current) {
+      try {
+        await addGroupExpense(groupId, expense);
+        setToast('EXPENSE ADDED');
+      } catch (e) {
+        console.error('addGroupExpense failed:', e);
+        setToast('SAVE FAILED');
+      }
+    } else {
+      setToast('EXPENSE ADDED');
+    }
   }
 
   async function handleJoinGroup(code) {
