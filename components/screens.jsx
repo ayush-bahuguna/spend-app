@@ -516,11 +516,13 @@ export function StatsScreen({ expenses, onBack }) {
           React.createElement('div', { className: 'stat-label', style: { marginBottom: 12 } }, 'BY CATEGORY'),
           React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
             rows.map(r => React.createElement('div', { key: r.id, className: 'bar-row' },
-              React.createElement('span', { className: 'font-pixel', style: { fontSize: 8, color: '#2b2418' } }, r.label),
+              React.createElement('div', { className: 'bar-row-head' },
+                React.createElement('span', { className: 'bar-label font-pixel' }, r.label),
+                React.createElement('span', { className: 'bar-amount font-pixel' }, formatINR(r.amount))
+              ),
               React.createElement('div', { className: 'bar-track' },
                 React.createElement('div', { className: 'bar-fill', style: { width: (r.amount / max * 100) + '%', minWidth: r.amount > 0 ? 4 : 0 } })
-              ),
-              React.createElement('span', { className: 'bar-amount font-pixel' }, formatINR(r.amount))
+              )
             ))
           )
         )
