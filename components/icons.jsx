@@ -548,10 +548,126 @@ export function GroupHeartIcon({ size = 28 }) {
   return React.createElement(PixelSVG, { grid: GROUP_HEART_GRID, palette: GROUP_HEART_PAL, size });
 }
 
+const CAR_GRID = [
+  '                ',
+  '                ',
+  '       ccccc    ',
+  '      cwwwwwc   ',
+  '    bbcwwwwwcb  ',
+  '   bbbbbbbbbbbb ',
+  '  bbbbbbbbbbbbbb',
+  '  ybbbbbbbbbbybb',
+  '  bbbbbbbbbbbbbb',
+  '  bbkkbbbbbbkkbb',
+  '   kKKk    kKKk ',
+  '   kKKk    kKKk ',
+  '    kk      kk  ',
+  '                ',
+  '                ',
+  '                ',
+];
+const CAR_PAL = { b: '#d0584a', c: '#b5453a', w: '#bfe3f0', y: '#ffe27a', k: '#1a1610', K: '#9a9a9a' };
+export function CarIcon({ size = 28, palette }) {
+  return React.createElement(PixelSVG, { grid: CAR_GRID, palette: palette || CAR_PAL, size });
+}
+
+const PETROL_GRID = [
+  '                ',
+  '    ppppppp     ',
+  '    p     p     ',
+  '    p www p ee  ',
+  '    p www pee e ',
+  '    p     pe  e ',
+  '    pppppppe  e ',
+  '    p     p   e ',
+  '    p     ppppe ',
+  '    p     p     ',
+  '    ppppppp     ',
+  '   ppppppppp    ',
+  '  ppppppppppp   ',
+  '                ',
+  '                ',
+  '                ',
+];
+const PETROL_PAL = { p: '#d0584a', w: '#bfe3f0', e: '#6a6a6a' };
+export function PetrolIcon({ size = 28 }) {
+  return React.createElement(PixelSVG, { grid: PETROL_GRID, palette: PETROL_PAL, size });
+}
+
+const WRENCH_GRID = [
+  '                ',
+  '            ss  ',
+  '           ssss ',
+  '           ss s ',
+  '          sssss ',
+  '         sss s  ',
+  '        sss     ',
+  '       sss      ',
+  '      sss       ',
+  '     sss        ',
+  '    sss         ',
+  '   ssss         ',
+  '  sss s         ',
+  '  ssss          ',
+  '   ss           ',
+  '                ',
+];
+const WRENCH_PAL = { s: '#9aa7b5' };
+export function WrenchIcon({ size = 28 }) {
+  return React.createElement(PixelSVG, { grid: WRENCH_GRID, palette: WRENCH_PAL, size });
+}
+
+const CAR_GLYPH = [
+  '              ',
+  '     wwwww    ',
+  '   wwwwwwww   ',
+  '  wwwwwwwwww  ',
+  '  wwwwwwwwww  ',
+  '  ww w  w ww  ',
+  '   w      w   ',
+  '              ',
+];
+const CAR_GLYPH_PAL = { w: '#f4ead0' };
+export function CarGlyph({ size = 18 }) {
+  return React.createElement(PixelSVG, { grid: CAR_GLYPH, palette: CAR_GLYPH_PAL, size });
+}
+
+const ODO_GLYPH = [
+  '          ',
+  '   gggg   ',
+  '  gGGGGg  ',
+  ' gGkGGkGg ',
+  ' gGGkGGGg ',
+  ' gGGkkGGg ',
+  '  gGGGGg  ',
+  '   gggg   ',
+];
+const ODO_PAL = { g: '#2f5224', G: '#4a7a3a', k: '#1a3a14' };
+export function OdoGlyph({ size = 18 }) {
+  return React.createElement(PixelSVG, { grid: ODO_GLYPH, palette: ODO_PAL, size });
+}
+
+const FUEL_GLYPH = [
+  '          ',
+  '    gg    ',
+  '    gg    ',
+  '   gGGg   ',
+  '  gGGGGg  ',
+  '  gGGGGg  ',
+  '  gGGGGg  ',
+  '   gggg   ',
+];
+const FUEL_PAL = { g: '#2f5224', G: '#4a7a3a' };
+export function FuelGlyph({ size = 18 }) {
+  return React.createElement(PixelSVG, { grid: FUEL_GLYPH, palette: FUEL_PAL, size });
+}
+
 export const CATEGORIES = {
-  food:     { id: 'food',     label: 'FOOD',     Icon: FoodIcon,     color: '#d97a3a' },
-  travel:   { id: 'travel',   label: 'TRAVEL',   Icon: TravelIcon,   color: '#e8c44a' },
-  shopping: { id: 'shopping', label: 'SHOPPING', Icon: ShoppingIcon, color: '#d36ba0' },
-  bills:    { id: 'bills',    label: 'BILLS',    Icon: BillsIcon,    color: '#b8a980' },
-  other:    { id: 'other',    label: 'OTHER',    Icon: OtherIcon,    color: '#8a8a8a' },
+  food:        { id: 'food',        label: 'FOOD',        Icon: FoodIcon,     color: '#d97a3a' },
+  travel:      { id: 'travel',      label: 'TRAVEL',      Icon: TravelIcon,   color: '#e8c44a' },
+  shopping:    { id: 'shopping',    label: 'SHOPPING',    Icon: ShoppingIcon, color: '#d36ba0' },
+  bills:       { id: 'bills',       label: 'BILLS',       Icon: BillsIcon,    color: '#b8a980' },
+  petrol:      { id: 'petrol',      label: 'PETROL',      Icon: PetrolIcon,   color: '#d0584a' },
+  maintenance: { id: 'maintenance', label: 'MAINTENANCE', Icon: WrenchIcon,   color: '#9aa7b5' },
+  other:       { id: 'other',       label: 'OTHER',       Icon: OtherIcon,    color: '#8a8a8a' },
 };

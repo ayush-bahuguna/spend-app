@@ -4,7 +4,7 @@ import {
   CATEGORIES, CoffeeIcon, SlimeSprite,
   MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph,
   MenuGlyph, ChartGlyph, BackGlyph, PlusGlyph, SaveGlyph, TrashGlyph, ShareGlyph, EditGlyph,
-  PeopleGlyph, SplitGlyph, CheckGlyph,
+  PeopleGlyph, SplitGlyph, CheckGlyph, CarGlyph,
 } from './icons';
 import {
   PixelButton, IconButton, CardHeader, MainCard, Sheet, Calendar, TabBtn,
@@ -536,9 +536,10 @@ export function StatsScreen({ expenses, onBack }) {
   );
 }
 
-export function MenuSheet({ onClose, onSignOut }) {
+export function MenuSheet({ onClose, onSignOut, onCarTracker }) {
   return React.createElement(Sheet, { title: 'MENU', onClose },
     React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+      React.createElement(PixelButton, { ghost: true, onClick: onCarTracker, icon: React.createElement(CarGlyph, { size: 16 }) }, 'CAR TRACKER'),
       React.createElement(PixelButton, { ghost: true, onClick: onSignOut }, 'SIGN OUT')
     )
   );

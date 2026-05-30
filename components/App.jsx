@@ -8,14 +8,17 @@ import {
 import {
   CreateGroupScreen, GroupDetailScreen, GroupAddExpenseScreen, GroupExpenseDetailScreen,
 } from './groups';
+import { CarScreen, CarAddScreen, CarTripDetailScreen } from './car';
 import { getSupabase } from '../lib/supabase';
 import {
   fetchExpenses, upsertExpense, deleteExpense, upsertManyExpenses,
   fetchGroups, createGroup, deleteGroup, addGroupExpense, joinGroupByCode, upsertManyGroups, updateGroupJoinCode,
+  fetchCarTrips, upsertCarTrip, deleteCarTrip,
 } from '../lib/db';
 
-const STORAGE_KEY = 'spend_expenses_v1';
-const GROUPS_KEY  = 'spend_groups_v1';
+const STORAGE_KEY   = 'spend_expenses_v1';
+const GROUPS_KEY    = 'spend_groups_v1';
+const CAR_TRIPS_KEY = 'spend_car_trips_v1';
 
 
 // ─── localStorage helpers (no SAMPLE fallback — just cache) ─────────────────
@@ -42,6 +45,17 @@ function readLocalGroups() {
 function writeLocalGroups(list) {
   try { localStorage.setItem(GROUPS_KEY, JSON.stringify(list)); } catch {}
 }
+function readLocalCarTrips() {
+  try {
+    const raw = localStorage.getItem(CAR_TRIPS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function writeLocalCarTrips(list) {
+  try { localStorage.setItem(CAR_TRIPS_KEY, JSON.stringify(list)); } catch {}
+}
 
 async function maybeRunMigration(userId, cachedExp, cachedGroups) {
   const key = 'spend_migrated_' + userId;
@@ -62,6 +76,7 @@ async function maybeRunMigration(userId, cachedExp, cachedGroups) {
 export default function App() {
   const [expenses,    setExpenses]    = useState([]);
   const [groups,      setGroups]      = useState([]);
+  const [carTrips,    setCarTrips]    = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [route,       setRoute]       = useState({ name: 'home' });
   const [toast,       setToast]       = useState('');
@@ -84,18 +99,21 @@ export default function App() {
       // Warm-start from cache
       const cachedExp    = readLocalExpenses();
       const cachedGroups = readLocalGroups();
+      const cachedTrips  = readLocalCarTrips();
       if (cachedExp.length)    setExpenses(cachedExp);
       if (cachedGroups.length) setGroups(cachedGroups);
+      if (cachedTrips.length)  setCarTrips(cachedTrips);
 
       // One-time migration of pre-auth localStorage data
       await maybeRunMigration(userId, cachedExp, cachedGroups);
 
       // Fetch from Supabase (source of truth)
-      let remoteExp = [], remoteGroups = [];
+      let remoteExp = [], remoteGroups = [], remoteTrips = [];
       try {
-        [remoteExp, remoteGroups] = await Promise.all([
+        [remoteExp, remoteGroups, remoteTrips] = await Promise.all([
           fetchExpenses(userId),
           fetchGroups(userId),
+          fetchCarTrips(userId),
         ]);
       } catch (e) {
         console.warn('DB fetch failed, using cache/sample:', e);
@@ -104,11 +122,14 @@ export default function App() {
 
       const finalExp    = remoteExp.length    ? remoteExp    : (cachedExp.length    ? cachedExp    : []);
       const finalGroups = remoteGroups.length ? remoteGroups : (cachedGroups.length ? cachedGroups : []);
+      const finalTrips  = remoteTrips.length  ? remoteTrips  : cachedTrips;
 
       setExpenses(finalExp);
       setGroups(finalGroups);
+      setCarTrips(finalTrips);
       writeLocalExpenses(finalExp);
       writeLocalGroups(finalGroups);
+      writeLocalCarTrips(finalTrips);
       setDataLoading(false);
 
       // Realtime: refetch groups on any group_expenses change
@@ -219,6 +240,43 @@ export default function App() {
       console.error(e);
       setToast('FAILED TO GENERATE');
     }
+  }
+
+  // ── Car mutations ────────────────────────────────────────────────────────
+  function handleSaveCarEntry(type, entry) {
+    if (type === 'trip') {
+      setCarTrips(prev => {
+        const next = [...prev.filter(t => t.id !== entry.id), entry]
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+        writeLocalCarTrips(next);
+        return next;
+      });
+      if (userIdRef.current) upsertCarTrip(userIdRef.current, entry).catch(console.error);
+      setToast('TRIP SAVED');
+    } else {
+      let next;
+      setExpenses(prev => {
+        next = [entry, ...prev];
+        return next;
+      });
+      setTimeout(() => {
+        writeLocalExpenses(next);
+        if (userIdRef.current) upsertExpense(userIdRef.current, entry).catch(console.error);
+      }, 0);
+      setToast('EXPENSE ADDED');
+    }
+    setRoute({ name: 'car' });
+  }
+
+  function handleDeleteCarTrip(id) {
+    setCarTrips(prev => {
+      const next = prev.filter(t => t.id !== id);
+      writeLocalCarTrips(next);
+      return next;
+    });
+    if (userIdRef.current) deleteCarTrip(id).catch(console.error);
+    setToast('TRIP DELETED');
+    setRoute({ name: 'car' });
   }
 
   function handleSaveGroupExpense(groupId, expense) {
@@ -347,6 +405,27 @@ export default function App() {
       onSave: (exp) => handleSaveGroupExpense(currentGroup.id, exp),
       onCancel: () => goGroupDetail(currentGroup.id),
     });
+  } else if (route.name === 'car') {
+    screen = React.createElement(CarScreen, {
+      trips: carTrips, expenses,
+      onBack: goHome,
+      onAdd: (type) => setRoute({ name: 'car-add', addType: type }),
+      onOpenTrip: (id) => setRoute({ name: 'car-trip-detail', tripId: id }),
+      onOpenExpense: (id) => goDetail(id),
+    });
+  } else if (route.name === 'car-add') {
+    screen = React.createElement(CarAddScreen, {
+      type: route.addType,
+      onSave: handleSaveCarEntry,
+      onCancel: () => setRoute({ name: 'car' }),
+    });
+  } else if (route.name === 'car-trip-detail') {
+    const trip = carTrips.find(t => t.id === route.tripId);
+    if (trip) screen = React.createElement(CarTripDetailScreen, {
+      trip,
+      onBack: () => setRoute({ name: 'car' }),
+      onDelete: () => handleDeleteCarTrip(trip.id),
+    });
   }
 
   return React.createElement(React.Fragment, null,
@@ -354,6 +433,7 @@ export default function App() {
     menuOpen && React.createElement(MenuSheet, {
       onClose: () => setMenuOpen(false),
       onSignOut: handleSignOut,
+      onCarTracker: () => { setMenuOpen(false); setRoute({ name: 'car' }); },
     }),
     shareTarget && React.createElement(ShareSheet, {
       expense: shareTarget,
