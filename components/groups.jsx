@@ -88,7 +88,7 @@ export function CreateGroupScreen({ onSave, onCancel }) {
     setMemberInput('');
   }
 
-  const isValid = name.trim().length > 0 && members.length >= 2;
+  const isValid = name.trim().length > 0;
 
   function handleSave() {
     if (!isValid) return;
@@ -163,7 +163,10 @@ export function CreateGroupScreen({ onSave, onCancel }) {
 
       React.createElement('div', null,
         React.createElement('div', { className: 'field-label' },
-          React.createElement(PeopleGlyph, { size: 16 }), 'MEMBERS (MIN 2)'
+          React.createElement(PeopleGlyph, { size: 16 }), 'OTHER MEMBERS'
+        ),
+        React.createElement('div', { className: 'font-pixel', style: { fontSize: 8, color: 'var(--green-dark)', marginBottom: 4 } },
+          '+ YOU ARE ADDED AUTOMATICALLY'
         ),
         React.createElement('div', { style: { display: 'flex', gap: 6 } },
           React.createElement('div', { className: 'field', style: { flex: 1 } },
@@ -196,17 +199,25 @@ export function CreateGroupScreen({ onSave, onCancel }) {
         ))
       ),
 
-      members.length < 2 && React.createElement('div', {
+      members.length === 0 && React.createElement('div', {
         className: 'font-pixel',
         style: { fontSize: 8, color: 'var(--ink-faint)', textAlign: 'center', padding: '6px 0' },
-      }, members.length === 1 ? 'ADD 1 MORE MEMBER' : 'ADD AT LEAST 2 MEMBERS')
+      }, 'ADD OTHERS TO SPLIT WITH')
     )
   );
 }
 
-function GroupExpenseCard({ exp, group, onClick }) {
+function GroupExpenseCard({ exp, group, currentUserId, onClick }) {
   const cat = CATEGORIES[exp.category] || CATEGORIES.other;
   const payer = group.members.find(m => m.id === exp.paidById);
+  const myMember = currentUserId ? (group.members || []).find(m => m.userId === currentUserId) : null;
+  const myId = myMember?.id;
+  const mySplt = myId ? (exp.splits || []).find(s => s.memberId === myId) : null;
+  const myAmt = mySplt ? Number(mySplt.value) : 0;
+  const iPaid = myId && exp.paidById === myId;
+  const othersOweMe = iPaid ? Math.round((Number(exp.amount) - myAmt) * 100) / 100 : 0;
+  const iOwe = !iPaid && myAmt > 0.01 ? myAmt : 0;
+  const hasOweLine = myMember && (othersOweMe > 0.5 || iOwe > 0.5);
 
   return React.createElement('div', { className: 'cell', onClick },
     React.createElement('div', { className: 'cell-inner', style: { flexDirection: 'column', alignItems: 'stretch', gap: 0, padding: 0 } },
@@ -226,16 +237,24 @@ function GroupExpenseCard({ exp, group, onClick }) {
           React.createElement('div', { className: 'chev' }, '›')
         )
       ),
-      payer && React.createElement('div', { style: { paddingLeft: 66, paddingTop: 3, paddingBottom: 10 } },
-        React.createElement('span', { className: 'font-pixel', style: { fontSize: 8, color: 'var(--green-dark)' } },
+      React.createElement('div', { style: { paddingLeft: 66, paddingTop: 3, paddingBottom: 10, display: 'flex', gap: 10 } },
+        payer && React.createElement('span', { className: 'font-pixel', style: { fontSize: 8, color: 'var(--ink-faint)' } },
           'PAID BY ' + payer.name
+        ),
+        hasOweLine && React.createElement('span', { className: 'font-pixel', style: {
+          fontSize: 8,
+          color: othersOweMe > 0.5 ? 'var(--green-dark)' : '#c84a3a',
+        } },
+          othersOweMe > 0.5
+            ? 'OTHERS OWE YOU ' + formatINR(othersOweMe)
+            : 'YOU OWE ' + formatINR(iOwe)
         )
       )
     )
   );
 }
 
-export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode }) {
+export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode }) {
   const [tab, setTab]               = useState('expenses');
   const [groupMenu, setGroupMenu]   = useState(false);
   const [deleteSheet, setDeleteSheet] = useState(false);
@@ -305,7 +324,7 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
       )
     : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
         [...(group.expenses || [])].reverse().map(exp =>
-          React.createElement(GroupExpenseCard, { key: exp.id, exp, group, onClick: () => onOpenExpense(exp.id) })
+          React.createElement(GroupExpenseCard, { key: exp.id, exp, group, currentUserId, onClick: () => onOpenExpense(exp.id) })
         )
       );
 
@@ -321,9 +340,12 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
       const b = Math.round((balances[m.id] || 0) * 100) / 100;
       const isPos = b > 0.5;
       const isNeg = b < -0.5;
-      return React.createElement('div', { key: m.id, className: 'cell is-flat' },
+      const isMe = currentUserId && m.userId === currentUserId;
+      return React.createElement('div', { key: m.id, className: 'cell is-flat', style: isMe ? { outline: '2px solid var(--ink)', outlineOffset: '-2px' } : undefined },
         React.createElement('div', { className: 'cell-inner' },
-          React.createElement('span', { className: 'font-pixel', style: { fontSize: 11, flex: 1 } }, m.name),
+          React.createElement('span', { className: 'font-pixel', style: { fontSize: 11, flex: 1, fontWeight: isMe ? 'bold' : undefined } },
+            isMe ? m.name + ' (YOU)' : m.name
+          ),
           React.createElement('div', { style: { background: 'var(--ink)', padding: 3, clipPath: chipPath } },
             React.createElement('div', { className: 'font-pixel', style: {
               fontSize: 8, padding: '5px 10px',
@@ -391,12 +413,13 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
   );
 }
 
-export function GroupAddExpenseScreen({ group, onSave, onCancel }) {
+export function GroupAddExpenseScreen({ group, currentUserId, onSave, onCancel }) {
+  const myMember = currentUserId ? (group.members || []).find(m => m.userId === currentUserId) : null;
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(new Date().toISOString());
   const [note, setNote] = useState('');
-  const [paidById, setPaidById] = useState(group.members[0]?.id || '');
+  const [paidById, setPaidById] = useState(() => myMember?.id || group.members[0]?.id || '');
   const [splitType, setSplitType] = useState('equal');
   const [splitVals, setSplitVals] = useState({});
 

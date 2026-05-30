@@ -83,6 +83,7 @@ export default function App() {
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [shareTarget, setShareTarget] = useState(null);
   const userIdRef   = useRef(null);
+  const userNameRef = useRef('ME');
   const realtimeRef = useRef(null);
 
   // ── Init: load data + realtime ──────────────────────────────────────────
@@ -95,6 +96,8 @@ export default function App() {
       if (!session || cancelled) return;
       const userId = session.user.id;
       userIdRef.current = userId;
+      const userMeta = session.user.user_metadata;
+      userNameRef.current = (userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || 'ME').toUpperCase();
 
       // Warm-start from cache
       const cachedExp    = readLocalExpenses();
@@ -218,9 +221,14 @@ export default function App() {
 
   // ── Group mutations ──────────────────────────────────────────────────────
   async function handleSaveGroup(group) {
+    const creatorMember = {
+      id:   'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+      name: userNameRef.current,
+    };
+    const groupWithCreator = { ...group, creatorMember };
     const withCode = userIdRef.current
-      ? await createGroup(userIdRef.current, group).catch(() => group)
-      : group;
+      ? await createGroup(userIdRef.current, groupWithCreator).catch(() => groupWithCreator)
+      : groupWithCreator;
     setGroups(prev => {
       const next = [withCode, ...prev];
       writeLocalGroups(next);
@@ -320,7 +328,7 @@ export default function App() {
   async function handleJoinGroup(code) {
     if (!userIdRef.current) return;
     try {
-      const group = await joinGroupByCode(userIdRef.current, code);
+      const group = await joinGroupByCode(userIdRef.current, code, userNameRef.current);
       if (!group) { setToast('INVALID CODE'); return; }
       setGroups(prev => {
         const already = prev.find(g => g.id === group.id);
@@ -408,6 +416,7 @@ export default function App() {
   } else if (route.name === 'group-detail' && currentGroup) {
     screen = React.createElement(GroupDetailScreen, {
       group: currentGroup,
+      currentUserId: userIdRef.current,
       onBack: goHome,
       onAddExpense: () => goGroupAddExp(currentGroup.id),
       onDeleteGroup: () => handleDeleteGroup(currentGroup.id),
@@ -426,6 +435,7 @@ export default function App() {
   } else if (route.name === 'group-add-expense' && currentGroup) {
     screen = React.createElement(GroupAddExpenseScreen, {
       group: currentGroup,
+      currentUserId: userIdRef.current,
       onSave: (exp) => handleSaveGroupExpense(currentGroup.id, exp),
       onCancel: () => goGroupDetail(currentGroup.id),
     });
