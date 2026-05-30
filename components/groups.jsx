@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import {
   CATEGORIES, SlimeSprite,
   BackGlyph, PlusGlyph, TrashGlyph, SaveGlyph, PeopleGlyph, SplitGlyph, CheckGlyph,
-  MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph, ShareGlyph,
+  MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph, ShareGlyph, MenuGlyph,
   GroupPeopleIcon, GroupHomeIcon, GroupStarIcon, GroupHeartIcon, TravelIcon,
 } from './icons';
 import {
@@ -247,21 +247,33 @@ function GroupExpenseCard({ exp, group, onClick }) {
 }
 
 export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode }) {
-  const [tab, setTab] = useState('expenses');
-  const [shareLabel, setShareLabel] = useState('INVITE');
-  const [codeCopied, setCodeCopied] = useState(false);
+  const [tab, setTab]               = useState('expenses');
+  const [groupMenu, setGroupMenu]   = useState(false);
   const [deleteSheet, setDeleteSheet] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const balances = useMemo(() => calcBalances(group), [group]);
   const total = (group.expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
   const title = group.name.length > 11 ? group.name.slice(0, 11) + '…' : group.name;
 
-  function handleShareInvite() {
+  function copyCode() {
+    if (!group.joinCode) return;
+    try {
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(group.joinCode);
+      else {
+        const ta = document.createElement('textarea');
+        ta.value = group.joinCode; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+      }
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 1500);
+    } catch {}
+  }
+
+  function shareInvite() {
     if (!group.joinCode) return;
     const msg = `Join "${group.name}" on Spend! Enter code ${group.joinCode} in the Groups tab.`;
     if (navigator.share) {
-      navigator.share({ title: 'Join my Spend group', text: msg })
-        .then(() => { setShareLabel('SHARED!'); setTimeout(() => setShareLabel('INVITE'), 2000); })
-        .catch(() => {});
+      navigator.share({ title: 'Join my Spend group', text: msg }).catch(() => {});
     } else {
       try {
         if (navigator.clipboard?.writeText) navigator.clipboard.writeText(msg);
@@ -270,16 +282,16 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
           ta.value = msg; document.body.appendChild(ta);
           ta.select(); document.execCommand('copy'); ta.remove();
         }
-        setShareLabel('COPIED!');
-        setTimeout(() => setShareLabel('INVITE'), 2000);
+        setCodeCopied(true);
+        setTimeout(() => setCodeCopied(false), 1500);
       } catch {}
     }
   }
 
   const header = React.createElement(CardHeader, {
     title, subtitle: group.members.length + ' MEMBERS',
-    left: React.createElement(IconButton, { onClick: onBack }, React.createElement(BackGlyph, { size: 18 })),
-    right: React.createElement(IconButton, { onClick: () => setDeleteSheet(true), style: { color: '#c84a3a' } }, React.createElement(TrashGlyph, { size: 16 })),
+    left:  React.createElement(IconButton, { onClick: onBack }, React.createElement(BackGlyph, { size: 18 })),
+    right: React.createElement(IconButton, { onClick: () => setGroupMenu(true) }, React.createElement(MenuGlyph, { size: 18 })),
   });
 
   const footer = React.createElement(PixelButton, {
@@ -337,50 +349,46 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
     })
   );
 
-  function copyCode() {
-    try {
-      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(group.joinCode);
-      else {
-        const ta = document.createElement('textarea');
-        ta.value = group.joinCode; document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy'); ta.remove();
-      }
-      setCodeCopied(true);
-      setTimeout(() => setCodeCopied(false), 1500);
-    } catch {}
-  }
-
-  const joinCodeRow = React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
-    React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'INVITE CODE'),
-    group.joinCode
-      ? React.createElement('div', {
-          style: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
-          onClick: copyCode,
-          title: 'Tap to copy code',
-        },
-          React.createElement('div', { className: 'font-pixel', style: { fontSize: 14, letterSpacing: '0.25em', color: 'var(--ink)' } }, group.joinCode),
-          React.createElement('div', { className: 'font-pixel', style: {
-            fontSize: 8, padding: '3px 6px',
-            color: codeCopied ? 'var(--cream)' : 'var(--green-dark)',
-            background: codeCopied ? 'var(--green-dark)' : 'var(--cream-shade)',
-            transition: 'all 0.15s',
-          } }, codeCopied ? 'COPIED!' : 'TAP')
+  const inviteCodeSection = group.joinCode
+    ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+        React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+          React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'INVITE CODE'),
+          React.createElement('div', { className: 'font-pixel', style: { fontSize: 16, letterSpacing: '0.3em', color: 'var(--ink)' } }, group.joinCode)
+        ),
+        React.createElement('div', { style: { display: 'flex', gap: 8 } },
+          React.createElement(PixelButton, {
+            ghost: true, onClick: copyCode, style: { flex: 1 },
+            icon: React.createElement(ShareGlyph, { size: 14 }),
+          }, codeCopied ? 'COPIED!' : 'COPY CODE'),
+          React.createElement(PixelButton, {
+            ghost: true, onClick: shareInvite, style: { flex: 1 },
+            icon: React.createElement(ShareGlyph, { size: 14 }),
+          }, 'SHARE')
         )
-      : React.createElement('div', {
-          className: 'font-pixel',
-          style: { fontSize: 8, color: 'var(--green-dark)', background: 'var(--cream-shade)', padding: '4px 8px', cursor: 'pointer' },
-          onClick: onGenerateCode,
-        }, 'GENERATE CODE')
-  );
+      )
+    : React.createElement(PixelButton, {
+        ghost: true, onClick: () => { setGroupMenu(false); onGenerateCode(); },
+      }, 'GENERATE INVITE CODE');
 
   return React.createElement('div', { className: 'screen' },
     React.createElement(MainCard, { header, footer },
-      joinCodeRow,
       tabBar,
       React.createElement('div', { style: { height: 4 } }),
       tab === 'expenses' ? expensesContent : balancesContent
     ),
-    deleteSheet && React.createElement(Sheet, { title: 'DELETE GROUP?', onClose: () => setDeleteSheet(false) },
+    groupMenu && React.createElement(Sheet, { title: 'GROUP OPTIONS', onClose: () => setGroupMenu(false) },
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } },
+        inviteCodeSection,
+        React.createElement('div', { style: { borderTop: '2px solid var(--cream-shade)', paddingTop: 12 } },
+          React.createElement(PixelButton, {
+            danger: true,
+            icon: React.createElement(TrashGlyph, { size: 14 }),
+            onClick: () => { setGroupMenu(false); setDeleteSheet(true); },
+          }, 'REMOVE GROUP')
+        )
+      )
+    ),
+    deleteSheet && React.createElement(Sheet, { title: 'REMOVE GROUP?', onClose: () => setDeleteSheet(false) },
       React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
         React.createElement('div', { className: 'empty-sub', style: { textAlign: 'left' } },
           'THIS WILL DELETE "' + group.name + '" AND ALL ITS EXPENSES. THIS CANNOT BE UNDONE.'
@@ -389,7 +397,7 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
           danger: true,
           onClick: () => { setDeleteSheet(false); onDeleteGroup(); },
           icon: React.createElement(TrashGlyph, { size: 14 }),
-        }, 'YES, DELETE'),
+        }, 'YES, REMOVE'),
         React.createElement(PixelButton, { ghost: true, onClick: () => setDeleteSheet(false) }, 'CANCEL')
       )
     )
