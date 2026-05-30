@@ -168,7 +168,6 @@ export default function App() {
   }, [route]);
 
   // Refetch groups when app becomes visible (tab switch, phone un-lock, etc.)
-  // This is a reliable fallback when the realtime subscription has dropped.
   useEffect(() => {
     function onVisible() {
       if (document.visibilityState === 'visible' && userIdRef.current) {
@@ -180,6 +179,19 @@ export default function App() {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
+
+  // Poll for group updates every 6 seconds while viewing a group screen.
+  // This is the primary sync mechanism until realtime is confirmed working.
+  useEffect(() => {
+    const GROUP_ROUTES = ['group-detail', 'group-add-expense', 'group-expense-detail'];
+    if (!GROUP_ROUTES.includes(route.name) || !userIdRef.current) return;
+    const id = setInterval(() => {
+      fetchGroups(userIdRef.current)
+        .then(updated => { setGroups(updated); writeLocalGroups(updated); })
+        .catch(() => {});
+    }, 6000);
+    return () => clearInterval(id);
+  }, [route.name]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   const goHome         = useCallback(() => setRoute({ name: 'home' }), []);
