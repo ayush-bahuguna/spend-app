@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import {
   CATEGORIES, SlimeSprite,
   BackGlyph, PlusGlyph, TrashGlyph, SaveGlyph, PeopleGlyph, SplitGlyph, CheckGlyph,
-  MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph,
+  MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph, ShareGlyph,
   GroupPeopleIcon, GroupHomeIcon, GroupStarIcon, GroupHeartIcon, TravelIcon,
 } from './icons';
 import {
@@ -248,9 +248,32 @@ function GroupExpenseCard({ exp, group, onClick }) {
 
 export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, onOpenExpense }) {
   const [tab, setTab] = useState('expenses');
+  const [shareLabel, setShareLabel] = useState('INVITE');
+  const [codeCopied, setCodeCopied] = useState(false);
   const balances = useMemo(() => calcBalances(group), [group]);
   const total = (group.expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
   const title = group.name.length > 11 ? group.name.slice(0, 11) + '…' : group.name;
+
+  function handleShareInvite() {
+    if (!group.joinCode) return;
+    const msg = `Join "${group.name}" on Spend! Enter code ${group.joinCode} in the Groups tab.`;
+    if (navigator.share) {
+      navigator.share({ title: 'Join my Spend group', text: msg })
+        .then(() => { setShareLabel('SHARED!'); setTimeout(() => setShareLabel('INVITE'), 2000); })
+        .catch(() => {});
+    } else {
+      try {
+        if (navigator.clipboard?.writeText) navigator.clipboard.writeText(msg);
+        else {
+          const ta = document.createElement('textarea');
+          ta.value = msg; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); ta.remove();
+        }
+        setShareLabel('COPIED!');
+        setTimeout(() => setShareLabel('INVITE'), 2000);
+      } catch {}
+    }
+  }
 
   const header = React.createElement(CardHeader, {
     title, subtitle: group.members.length + ' MEMBERS',
@@ -258,9 +281,22 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
     right: React.createElement(IconButton, { onClick: onDeleteGroup }, React.createElement(TrashGlyph, { size: 16 })),
   });
 
-  const footer = React.createElement(PixelButton, {
-    onClick: onAddExpense, icon: React.createElement(PlusGlyph, { size: 14 }),
-  }, 'ADD EXPENSE');
+  const footer = group.joinCode
+    ? React.createElement('div', { style: { display: 'flex', gap: 8 } },
+        React.createElement(PixelButton, {
+          ghost: true, onClick: handleShareInvite,
+          icon: React.createElement(ShareGlyph, { size: 14 }),
+          style: { flex: 1 },
+        }, shareLabel),
+        React.createElement(PixelButton, {
+          onClick: onAddExpense,
+          icon: React.createElement(PlusGlyph, { size: 14 }),
+          style: { flex: 1 },
+        }, 'ADD EXPENSE')
+      )
+    : React.createElement(PixelButton, {
+        onClick: onAddExpense, icon: React.createElement(PlusGlyph, { size: 14 }),
+      }, 'ADD EXPENSE');
 
   const tabBar = React.createElement('div', { style: { display: 'flex', gap: 6 } },
     ['EXPENSES', 'BALANCES'].map(t =>
@@ -321,19 +357,26 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
         ta.value = group.joinCode; document.body.appendChild(ta);
         ta.select(); document.execCommand('copy'); ta.remove();
       }
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 1500);
     } catch {}
   }
 
   const joinCodeRow = group.joinCode
     ? React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
-        React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'JOIN CODE'),
+        React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'INVITE CODE'),
         React.createElement('div', {
           style: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
           onClick: copyCode,
-          title: 'Copy code',
+          title: 'Tap to copy code',
         },
-          React.createElement('div', { className: 'font-pixel', style: { fontSize: 13, letterSpacing: '0.2em', color: 'var(--ink)' } }, group.joinCode),
-          React.createElement('div', { className: 'font-pixel', style: { fontSize: 8, color: 'var(--green-dark)', background: 'var(--cream-shade)', padding: '3px 6px' } }, 'COPY')
+          React.createElement('div', { className: 'font-pixel', style: { fontSize: 14, letterSpacing: '0.25em', color: 'var(--ink)' } }, group.joinCode),
+          React.createElement('div', { className: 'font-pixel', style: {
+            fontSize: 8, padding: '3px 6px',
+            color: codeCopied ? 'var(--cream)' : 'var(--green-dark)',
+            background: codeCopied ? 'var(--green-dark)' : 'var(--cream-shade)',
+            transition: 'all 0.15s',
+          } }, codeCopied ? 'COPIED!' : 'TAP')
         )
       )
     : null;
