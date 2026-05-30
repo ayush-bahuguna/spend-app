@@ -206,17 +206,11 @@ export function CreateGroupScreen({ onSave, onCancel }) {
 
 function GroupExpenseCard({ exp, group, onClick }) {
   const cat = CATEGORIES[exp.category] || CATEGORIES.other;
-  const myId = group.members[0]?.id;
-  const mySplt = (exp.splits || []).find(s => s.memberId === myId);
-  const myAmt = mySplt ? Number(mySplt.value) : 0;
-  const iPaid = exp.paidById === myId;
-  const othersOweMe = iPaid ? Math.round((Number(exp.amount) - myAmt) * 100) / 100 : 0;
-  const iOwe = !iPaid && myAmt > 0.01 ? myAmt : 0;
-  const hasOweLine = othersOweMe > 0.5 || iOwe > 0.5;
+  const payer = group.members.find(m => m.id === exp.paidById);
 
   return React.createElement('div', { className: 'cell', onClick },
     React.createElement('div', { className: 'cell-inner', style: { flexDirection: 'column', alignItems: 'stretch', gap: 0, padding: 0 } },
-      React.createElement('div', { style: { padding: hasOweLine ? '10px 12px 3px' : '10px 12px' } },
+      React.createElement('div', { style: { padding: '10px 12px 3px' } },
         React.createElement('div', { className: 'row', style: { width: '100%' } },
           React.createElement('div', { className: 'icon-tile' },
             React.createElement('div', { className: 'icon-tile-inner' },
@@ -232,14 +226,9 @@ function GroupExpenseCard({ exp, group, onClick }) {
           React.createElement('div', { className: 'chev' }, '›')
         )
       ),
-      hasOweLine && React.createElement('div', { style: { paddingLeft: 66, paddingTop: 5, paddingBottom: 11 } },
-        React.createElement('span', { className: 'font-pixel', style: {
-          fontSize: 8,
-          color: othersOweMe > 0.5 ? 'var(--green-dark)' : '#b83030',
-        } },
-          othersOweMe > 0.5
-            ? 'OTHERS OWE YOU ' + formatINR(othersOweMe)
-            : 'YOU OWE ' + formatINR(iOwe)
+      payer && React.createElement('div', { style: { paddingLeft: 66, paddingTop: 3, paddingBottom: 10 } },
+        React.createElement('span', { className: 'font-pixel', style: { fontSize: 8, color: 'var(--green-dark)' } },
+          'PAID BY ' + payer.name
         )
       )
     )
