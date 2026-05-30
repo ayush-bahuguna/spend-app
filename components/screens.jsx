@@ -536,12 +536,9 @@ export function StatsScreen({ expenses, onBack }) {
   );
 }
 
-export function MenuSheet({ onClose, onShareAll, onResetDemo, onClearAll, onSignOut }) {
+export function MenuSheet({ onClose, onSignOut }) {
   return React.createElement(Sheet, { title: 'MENU', onClose },
     React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
-      React.createElement(PixelButton, { ghost: true, onClick: onShareAll, icon: React.createElement(ShareGlyph, { size: 14 }) }, 'SHARE SPEND LOG'),
-      React.createElement(PixelButton, { ghost: true, onClick: onResetDemo }, 'RESET DEMO DATA'),
-      React.createElement(PixelButton, { danger: true, onClick: onClearAll, icon: React.createElement(TrashGlyph, { size: 14 }) }, 'CLEAR ALL'),
       React.createElement(PixelButton, { ghost: true, onClick: onSignOut }, 'SIGN OUT')
     )
   );

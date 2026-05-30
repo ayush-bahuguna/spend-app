@@ -282,22 +282,9 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
     right: React.createElement(IconButton, { onClick: () => setDeleteSheet(true), style: { color: '#c84a3a' } }, React.createElement(TrashGlyph, { size: 16 })),
   });
 
-  const footer = group.joinCode
-    ? React.createElement('div', { style: { display: 'flex', gap: 8 } },
-        React.createElement(PixelButton, {
-          ghost: true, onClick: handleShareInvite,
-          icon: React.createElement(ShareGlyph, { size: 14 }),
-          style: { flex: 1 },
-        }, shareLabel),
-        React.createElement(PixelButton, {
-          onClick: onAddExpense,
-          icon: React.createElement(PlusGlyph, { size: 14 }),
-          style: { flex: 1 },
-        }, 'ADD EXPENSE')
-      )
-    : React.createElement(PixelButton, {
-        onClick: onAddExpense, icon: React.createElement(PlusGlyph, { size: 14 }),
-      }, 'ADD EXPENSE');
+  const footer = React.createElement(PixelButton, {
+    onClick: onAddExpense, icon: React.createElement(PlusGlyph, { size: 14 }),
+  }, 'ADD EXPENSE');
 
   const tabBar = React.createElement('div', { style: { display: 'flex', gap: 6 } },
     ['EXPENSES', 'BALANCES'].map(t =>

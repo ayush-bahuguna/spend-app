@@ -17,21 +17,6 @@ import {
 const STORAGE_KEY = 'spend_expenses_v1';
 const GROUPS_KEY  = 'spend_groups_v1';
 
-function makeDate(daysAgo) {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  d.setHours(12, 0, 0, 0);
-  return d.toISOString();
-}
-
-const SAMPLE = [
-  { id: 's1', amount: 200,  category: 'food',     date: makeDate(0), note: 'BURGER + FRIES' },
-  { id: 's2', amount: 120,  category: 'travel',   date: makeDate(1), note: '' },
-  { id: 's3', amount: 800,  category: 'shopping', date: makeDate(2), note: 'NEW HEADPHONES' },
-  { id: 's4', amount: 1500, category: 'bills',    date: makeDate(3), note: 'ELECTRICITY' },
-  { id: 's5', amount: 75,   category: 'other',    date: makeDate(4), note: '' },
-  { id: 's6', amount: 60,   category: 'food',     date: makeDate(5), note: 'MORNING COFFEE', iconVariant: 'coffee' },
-];
 
 // ─── localStorage helpers (no SAMPLE fallback — just cache) ─────────────────
 
@@ -117,7 +102,7 @@ export default function App() {
       }
       if (cancelled) return;
 
-      const finalExp    = remoteExp.length    ? remoteExp    : (cachedExp.length    ? cachedExp    : SAMPLE);
+      const finalExp    = remoteExp.length    ? remoteExp    : (cachedExp.length    ? cachedExp    : []);
       const finalGroups = remoteGroups.length ? remoteGroups : (cachedGroups.length ? cachedGroups : []);
 
       setExpenses(finalExp);
@@ -194,35 +179,6 @@ export default function App() {
     if (userIdRef.current) deleteExpense(id).catch(console.error);
     setToast('EXPENSE DELETED');
     goHome();
-  }
-
-  async function handleClearAll() {
-    setExpenses([]);
-    writeLocalExpenses([]);
-    if (userIdRef.current) {
-      getSupabase().from('expenses').delete().eq('user_id', userIdRef.current).catch(console.error);
-    }
-    setMenuOpen(false);
-    setToast('ALL CLEARED');
-    goHome();
-  }
-
-  function handleResetDemo() {
-    setExpenses(SAMPLE);
-    setGroups([]);
-    writeLocalExpenses(SAMPLE);
-    writeLocalGroups([]);
-    setMenuOpen(false);
-    setToast('DEMO DATA RESET');
-    goHome();
-  }
-
-  function handleShareAll() {
-    setMenuOpen(false);
-    const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-    const text = `My spend log: ${expenses.length} entries totalling ₹${Math.round(total).toLocaleString('en-IN')}`;
-    copyToClipboard(text);
-    setToast('LOG COPIED');
   }
 
   // ── Group mutations ──────────────────────────────────────────────────────
@@ -397,9 +353,6 @@ export default function App() {
     screen,
     menuOpen && React.createElement(MenuSheet, {
       onClose: () => setMenuOpen(false),
-      onShareAll: handleShareAll,
-      onResetDemo: handleResetDemo,
-      onClearAll: handleClearAll,
       onSignOut: handleSignOut,
     }),
     shareTarget && React.createElement(ShareSheet, {
