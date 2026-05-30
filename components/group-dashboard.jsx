@@ -76,11 +76,12 @@ export function GroupDashboardScreen({ group, currentUserId, onBack }) {
       const k = monthKey(exp.date);
       if (!map[k]) map[k] = { key: k, total: 0, byMember: {}, byCat: {} };
       const bucket = map[k];
-      bucket.total += Number(exp.amount || 0);
-      bucket.byCat[exp.category] = (bucket.byCat[exp.category] || 0) + Number(exp.amount || 0);
-      (exp.splits || []).forEach(s => {
-        bucket.byMember[s.memberId] = (bucket.byMember[s.memberId] || 0) + Number(s.value || 0);
-      });
+      const amt = Number(exp.amount || 0);
+      bucket.total += amt;
+      bucket.byCat[exp.category] = (bucket.byCat[exp.category] || 0) + amt;
+      if (exp.paidById) {
+        bucket.byMember[exp.paidById] = (bucket.byMember[exp.paidById] || 0) + amt;
+      }
     });
     return Object.values(map).sort((a, b) => (a.key < b.key ? 1 : -1));
   }, [expenses]);
@@ -113,8 +114,8 @@ export function GroupDashboardScreen({ group, currentUserId, onBack }) {
   if (expenses.length === 0) {
     content = emptyState;
   } else if (tab === 'members') {
-    const max = Math.max(1, ...members.map(m => memberSpent[m.id] || 0));
-    const ranked = [...members].sort((a, b) => (memberSpent[b.id] || 0) - (memberSpent[a.id] || 0));
+    const max = Math.max(1, ...members.map(m => memberPaid[m.id] || 0));
+    const ranked = [...members].sort((a, b) => (memberPaid[b.id] || 0) - (memberPaid[a.id] || 0));
 
     const balanceChip = myMember
       ? React.createElement('div', { className: 'dash-net-chip' },
@@ -134,25 +135,25 @@ export function GroupDashboardScreen({ group, currentUserId, onBack }) {
         )
       ),
       balanceChip,
-      React.createElement('div', { className: 'dash-section-label' }, 'WHO SPENT HOW MUCH'),
+      React.createElement('div', { className: 'dash-section-label' }, 'WHO PAID HOW MUCH'),
       React.createElement('div', { className: 'cell is-flat' },
         React.createElement('div', { className: 'cell-inner', style: { display: 'block', padding: '14px 14px' } },
           React.createElement('div', { className: 'dash-bars' },
             ranked.map(m => React.createElement(DashBar, {
               key: m.id, name: nameWithYou(m),
-              value: memberSpent[m.id] || 0, max,
+              value: memberPaid[m.id] || 0, max,
               color: memberColor[m.id],
-              sub: 'PAID ' + formatINR(memberPaid[m.id] || 0),
+              sub: 'SHARE ' + formatINR(memberSpent[m.id] || 0),
             }))
           )
         )
       ),
       React.createElement('div', { className: 'dash-foot-note' },
-        'SPENT = SHARE OF EXPENSES  •  PAID = OUT OF POCKET')
+        'PAID = OUT OF POCKET  •  SHARE = OWED PORTION')
     );
   } else if (tab === 'months') {
     content = React.createElement(React.Fragment, null,
-      React.createElement('div', { className: 'dash-section-label' }, 'SPEND BY MEMBER · MONTH'),
+      React.createElement('div', { className: 'dash-section-label' }, 'WHO PAID · BY MONTH'),
       ...months.map(mo => {
         const max = Math.max(1, ...members.map(m => mo.byMember[m.id] || 0));
         const ranked = [...members]
