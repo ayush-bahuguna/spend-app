@@ -106,10 +106,15 @@ export default function App() {
       await maybeRunMigration(userId, cachedExp, cachedGroups);
 
       // Fetch from Supabase (source of truth)
-      const [remoteExp, remoteGroups] = await Promise.all([
-        fetchExpenses(userId),
-        fetchGroups(userId),
-      ]);
+      let remoteExp = [], remoteGroups = [];
+      try {
+        [remoteExp, remoteGroups] = await Promise.all([
+          fetchExpenses(userId),
+          fetchGroups(userId),
+        ]);
+      } catch (e) {
+        console.warn('DB fetch failed, using cache/sample:', e);
+      }
       if (cancelled) return;
 
       const finalExp    = remoteExp.length    ? remoteExp    : (cachedExp.length    ? cachedExp    : SAMPLE);
