@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import {
   CATEGORIES, SlimeSprite,
   BackGlyph, PlusGlyph, TrashGlyph, SaveGlyph, PeopleGlyph, SplitGlyph, CheckGlyph,
-  MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph, ShareGlyph, MenuGlyph,
+  MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph, ShareGlyph, MenuGlyph, KebabGlyph, DashboardGlyph,
   GroupPeopleIcon, GroupHomeIcon, GroupStarIcon, GroupHeartIcon, TravelIcon,
 } from './icons';
 import {
@@ -254,7 +254,7 @@ function GroupExpenseCard({ exp, group, currentUserId, onClick }) {
   );
 }
 
-export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode, onRefresh }) {
+export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode, onRefresh, onOpenDashboard }) {
   const [tab, setTab]               = useState('expenses');
   const [groupMenu, setGroupMenu]   = useState(false);
   const [deleteSheet, setDeleteSheet] = useState(false);
@@ -299,7 +299,7 @@ export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, 
   const header = React.createElement(CardHeader, {
     title, subtitle: group.members.length + ' MEMBERS',
     left:  React.createElement(IconButton, { onClick: onBack }, React.createElement(BackGlyph, { size: 18 })),
-    right: React.createElement(IconButton, { onClick: () => setGroupMenu(true) }, React.createElement(MenuGlyph, { size: 18 })),
+    right: React.createElement(IconButton, { onClick: () => setGroupMenu(true) }, React.createElement(KebabGlyph, { size: 18 })),
   });
 
   const footer = React.createElement(PixelButton, {
@@ -392,6 +392,10 @@ export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, 
           ghost: true,
           onClick: () => { setGroupMenu(false); onRefresh(); },
         }, 'REFRESH NOW'),
+        onOpenDashboard && React.createElement(PixelButton, {
+          onClick: () => { setGroupMenu(false); onOpenDashboard(); },
+          icon: React.createElement(DashboardGlyph, { size: 14 }),
+        }, 'DASHBOARD'),
         React.createElement('div', { style: { borderTop: '2px solid var(--cream-shade)', paddingTop: 12 } },
           React.createElement(PixelButton, {
             danger: true,

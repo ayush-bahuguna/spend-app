@@ -8,6 +8,7 @@ import {
 import {
   CreateGroupScreen, GroupDetailScreen, GroupAddExpenseScreen, GroupExpenseDetailScreen,
 } from './groups';
+import { GroupDashboardScreen } from './group-dashboard';
 import { CarScreen, CarAddScreen, CarTripDetailScreen } from './car';
 import { getSupabase } from '../lib/supabase';
 import {
@@ -184,7 +185,7 @@ export default function App() {
   // Poll for group updates while viewing a group screen.
   // dataLoading in deps ensures this re-runs after init() sets userIdRef.current.
   useEffect(() => {
-    const GROUP_ROUTES = ['group-detail', 'group-add-expense', 'group-expense-detail'];
+    const GROUP_ROUTES = ['group-detail', 'group-add-expense', 'group-expense-detail', 'group-dashboard'];
     if (!GROUP_ROUTES.includes(route.name) || !userIdRef.current) return;
     function refresh() {
       fetchGroups(userIdRef.current)
@@ -213,6 +214,7 @@ export default function App() {
   const goGroupDetail  = useCallback((id) => setRoute({ name: 'group-detail', id }), []);
   const goGroupAddExp  = useCallback((id) => setRoute({ name: 'group-add-expense', id }), []);
   const goGroupExpDetail = useCallback((groupId, expId) => setRoute({ name: 'group-expense-detail', groupId, expId }), []);
+  const goGroupDashboard = useCallback((id) => setRoute({ name: 'group-dashboard', id }), []);
 
   // ── Expense mutations ────────────────────────────────────────────────────
   function handleSave(expense) {
@@ -386,14 +388,14 @@ export default function App() {
   // ── Guard: stale routes ──────────────────────────────────────────────────
   const currentExpense = (route.name === 'detail' || route.name === 'edit')
     ? expenses.find(e => e.id === route.id) : null;
-  const currentGroup = (route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail')
+  const currentGroup = (route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail' || route.name === 'group-dashboard')
     ? groups.find(g => g.id === (route.id || route.groupId)) : null;
 
   useEffect(() => {
     if ((route.name === 'detail' || route.name === 'edit') && !currentExpense && !dataLoading) setRoute({ name: 'home' });
   }, [route, currentExpense, dataLoading]);
   useEffect(() => {
-    if ((route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail') && !currentGroup && !dataLoading) setRoute({ name: 'home' });
+    if ((route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail' || route.name === 'group-dashboard') && !currentGroup && !dataLoading) setRoute({ name: 'home' });
   }, [route, currentGroup, dataLoading]);
 
   // ── Loading screen ───────────────────────────────────────────────────────
@@ -445,6 +447,13 @@ export default function App() {
       onOpenExpense: (expId) => goGroupExpDetail(currentGroup.id, expId),
       onGenerateCode: () => handleGenerateCode(currentGroup.id),
       onRefresh: handleRefreshGroups,
+      onOpenDashboard: () => goGroupDashboard(currentGroup.id),
+    });
+  } else if (route.name === 'group-dashboard' && currentGroup) {
+    screen = React.createElement(GroupDashboardScreen, {
+      group: currentGroup,
+      currentUserId: userIdRef.current,
+      onBack: () => goGroupDetail(currentGroup.id),
     });
   } else if (route.name === 'group-expense-detail' && currentGroup) {
     const currentGroupExp = (currentGroup.expenses || []).find(e => e.id === route.expId);

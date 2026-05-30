@@ -256,6 +256,54 @@ export function MenuGlyph({ size = 18 }) {
   return React.createElement(PixelSVG, { grid: MENU_GLYPH, palette: MENU_PAL, size });
 }
 
+const KEBAB_GLYPH = [
+  '        ',
+  '   ww   ',
+  '   ww   ',
+  '        ',
+  '   ww   ',
+  '   ww   ',
+  '        ',
+  '   ww   ',
+  '   ww   ',
+  '        ',
+];
+const KEBAB_PAL = { w: '#f4ead0' };
+export function KebabGlyph({ size = 18 }) {
+  return React.createElement(PixelSVG, { grid: KEBAB_GLYPH, palette: KEBAB_PAL, size });
+}
+
+const REFRESH_GLYPH = [
+  '          ',
+  '    www w ',
+  '   ww wwww',
+  '  ww    w ',
+  '  ww      ',
+  '  ww      ',
+  '  ww    w ',
+  '   ww  ww ',
+  '    wwww  ',
+  '          ',
+];
+const REFRESH_PAL = { w: '#f4ead0' };
+export function RefreshGlyph({ size = 16, color }) {
+  return React.createElement(PixelSVG, { grid: REFRESH_GLYPH, palette: color ? { w: color } : REFRESH_PAL, size });
+}
+
+const DASHBOARD_GLYPH = [
+  '          ',
+  '  ww  ww  ',
+  '  ww  ww  ',
+  '          ',
+  '  ww  ww  ',
+  '  ww  ww  ',
+  '          ',
+];
+const DASHBOARD_PAL = { w: '#f4ead0' };
+export function DashboardGlyph({ size = 16 }) {
+  return React.createElement(PixelSVG, { grid: DASHBOARD_GLYPH, palette: DASHBOARD_PAL, size });
+}
+
 const CHART_GLYPH = [
   '         ',
   '       w ',
