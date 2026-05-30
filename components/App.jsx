@@ -135,16 +135,15 @@ export default function App() {
       writeLocalCarTrips(finalTrips);
       setDataLoading(false);
 
-      // Realtime: refetch groups on any group_expenses change
+      // Realtime: refetch groups on any group_expenses or group_members change
+      async function onGroupChange() {
+        const updated = await fetchGroups(userId);
+        if (!cancelled) { setGroups(updated); writeLocalGroups(updated); }
+      }
       realtimeRef.current = supabase
-        .channel('group_expenses_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'group_expenses' }, async () => {
-          const updated = await fetchGroups(userId);
-          if (!cancelled) {
-            setGroups(updated);
-            writeLocalGroups(updated);
-          }
-        })
+        .channel('group_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'group_expenses' }, onGroupChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'group_members' }, onGroupChange)
         .subscribe();
     }
 
@@ -180,18 +179,20 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
-  // Poll for group updates every 6 seconds while viewing a group screen.
-  // This is the primary sync mechanism until realtime is confirmed working.
+  // Poll for group updates while viewing a group screen.
+  // dataLoading in deps ensures this re-runs after init() sets userIdRef.current.
   useEffect(() => {
     const GROUP_ROUTES = ['group-detail', 'group-add-expense', 'group-expense-detail'];
     if (!GROUP_ROUTES.includes(route.name) || !userIdRef.current) return;
-    const id = setInterval(() => {
+    function refresh() {
       fetchGroups(userIdRef.current)
         .then(updated => { setGroups(updated); writeLocalGroups(updated); })
         .catch(() => {});
-    }, 6000);
+    }
+    refresh();
+    const id = setInterval(refresh, 6000);
     return () => clearInterval(id);
-  }, [route.name]);
+  }, [route.name, dataLoading]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   const goHome         = useCallback(() => setRoute({ name: 'home' }), []);
