@@ -254,7 +254,7 @@ function GroupExpenseCard({ exp, group, currentUserId, onClick }) {
   );
 }
 
-export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode }) {
+export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode, onRefresh }) {
   const [tab, setTab]               = useState('expenses');
   const [groupMenu, setGroupMenu]   = useState(false);
   const [deleteSheet, setDeleteSheet] = useState(false);
@@ -388,6 +388,10 @@ export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, 
     groupMenu && React.createElement(Sheet, { title: 'GROUP OPTIONS', onClose: () => setGroupMenu(false) },
       React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } },
         inviteCodeSection,
+        onRefresh && React.createElement(PixelButton, {
+          ghost: true,
+          onClick: () => { setGroupMenu(false); onRefresh(); },
+        }, 'REFRESH NOW'),
         React.createElement('div', { style: { borderTop: '2px solid var(--cream-shade)', paddingTop: 12 } },
           React.createElement(PixelButton, {
             danger: true,

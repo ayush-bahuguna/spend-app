@@ -187,12 +187,19 @@ export default function App() {
     function refresh() {
       fetchGroups(userIdRef.current)
         .then(updated => { setGroups(updated); writeLocalGroups(updated); })
-        .catch(() => {});
+        .catch(err => console.error('group poll failed:', err));
     }
     refresh();
-    const id = setInterval(refresh, 6000);
+    const id = setInterval(refresh, 4000);
     return () => clearInterval(id);
   }, [route.name, dataLoading]);
+
+  const handleRefreshGroups = useCallback(() => {
+    if (!userIdRef.current) { setToast('NOT SIGNED IN'); return; }
+    fetchGroups(userIdRef.current)
+      .then(updated => { setGroups(updated); writeLocalGroups(updated); setToast('SYNCED'); })
+      .catch(err => { console.error('manual refresh failed:', err); setToast('SYNC FAILED'); });
+  }, []);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   const goHome         = useCallback(() => setRoute({ name: 'home' }), []);
@@ -435,6 +442,7 @@ export default function App() {
       onDeleteGroup: () => handleDeleteGroup(currentGroup.id),
       onOpenExpense: (expId) => goGroupExpDetail(currentGroup.id, expId),
       onGenerateCode: () => handleGenerateCode(currentGroup.id),
+      onRefresh: handleRefreshGroups,
     });
   } else if (route.name === 'group-expense-detail' && currentGroup) {
     const currentGroupExp = (currentGroup.expenses || []).find(e => e.id === route.expId);
