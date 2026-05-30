@@ -350,20 +350,18 @@ export function GroupDetailScreen({ group, onBack, onAddExpense, onDeleteGroup, 
   );
 
   const inviteCodeSection = group.joinCode
-    ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
-        React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
-          React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'INVITE CODE'),
-          React.createElement('div', { className: 'font-pixel', style: { fontSize: 16, letterSpacing: '0.3em', color: 'var(--ink)' } }, group.joinCode)
-        ),
-        React.createElement('div', { style: { display: 'flex', gap: 8 } },
-          React.createElement(PixelButton, {
-            ghost: true, onClick: copyCode, style: { flex: 1 },
-            icon: React.createElement(ShareGlyph, { size: 14 }),
-          }, codeCopied ? 'COPIED!' : 'COPY CODE'),
-          React.createElement(PixelButton, {
-            ghost: true, onClick: shareInvite, style: { flex: 1 },
-            icon: React.createElement(ShareGlyph, { size: 14 }),
-          }, 'SHARE')
+    ? React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+        React.createElement('div', { className: 'font-pixel', style: { fontSize: 9, color: 'var(--ink-faint)' } }, 'INVITE CODE'),
+        React.createElement('div', {
+          style: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
+          onClick: copyCode,
+        },
+          React.createElement('div', { className: 'font-pixel', style: { fontSize: 16, letterSpacing: '0.3em', color: 'var(--ink)' } }, group.joinCode),
+          React.createElement('div', { className: 'font-pixel', style: {
+            fontSize: 8, padding: '3px 6px',
+            color: codeCopied ? 'var(--cream)' : 'var(--green-dark)',
+            background: codeCopied ? 'var(--green-dark)' : 'var(--cream-shade)',
+          } }, codeCopied ? 'COPIED!' : 'TAP')
         )
       )
     : React.createElement(PixelButton, {
