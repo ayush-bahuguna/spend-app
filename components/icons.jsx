@@ -719,3 +719,15 @@ export const CATEGORIES = {
   maintenance: { id: 'maintenance', label: 'MAINTENANCE', Icon: WrenchIcon,   color: '#9aa7b5' },
   other:       { id: 'other',       label: 'OTHER',       Icon: OtherIcon,    color: '#8a8a8a' },
 };
+
+export function buildCustomCategory({ id, label, icon, color }) {
+  const emoji = icon;
+  return {
+    id,
+    label: label.toUpperCase(),
+    color: color || '#8a8a8a',
+    Icon: ({ size }) => React.createElement('span', {
+      style: { fontSize: size * 0.72, lineHeight: 1, display: 'block', textAlign: 'center' },
+    }, emoji),
+  };
+}

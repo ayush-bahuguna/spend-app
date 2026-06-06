@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useMemo } from 'react';
 import {
-  CATEGORIES, CoffeeIcon, SlimeSprite,
+  CATEGORIES, buildCustomCategory, CoffeeIcon, SlimeSprite,
   MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph,
   MenuGlyph, ChartGlyph, BackGlyph, PlusGlyph, SaveGlyph, TrashGlyph, ShareGlyph, EditGlyph,
   PeopleGlyph, SplitGlyph, CheckGlyph, CarGlyph,
@@ -12,7 +12,7 @@ import {
 } from './ui';
 import { GroupsTabContent } from './groups';
 
-export function HomeScreen({ expenses, groups, onAdd, onOpen, onStats, onMenu, onCreateGroup, onOpenGroup, onJoinGroup }) {
+export function HomeScreen({ expenses, groups, allCategories, onAdd, onOpen, onStats, onMenu, onCreateGroup, onOpenGroup, onJoinGroup }) {
   const [tab, setTab]         = useState('expenses');
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState('');
@@ -67,7 +67,7 @@ export function HomeScreen({ expenses, groups, onAdd, onOpen, onStats, onMenu, o
           )
         ),
         React.createElement('div', { className: 'list-body' },
-          sorted.map(e => React.createElement(ExpenseRow, { key: e.id, expense: e, onClick: () => onOpen(e.id) }))
+          sorted.map(e => React.createElement(ExpenseRow, { key: e.id, expense: e, allCategories, onClick: () => onOpen(e.id) }))
         )
       );
     }
@@ -110,8 +110,9 @@ export function HomeScreen({ expenses, groups, onAdd, onOpen, onStats, onMenu, o
   );
 }
 
-function ExpenseRow({ expense, onClick }) {
-  const cat = CATEGORIES[expense.category] || CATEGORIES.other;
+function ExpenseRow({ expense, allCategories, onClick }) {
+  const cats = allCategories || CATEGORIES;
+  const cat = cats[expense.category] || cats.other || CATEGORIES.other;
   const IconCmp = (expense.category === 'food' && expense.iconVariant === 'coffee') ? CoffeeIcon : cat.Icon;
   const hasSplit = expense.split && expense.split.members && expense.split.members.length > 0;
   return React.createElement('div', { className: 'cell', onClick },
@@ -139,7 +140,9 @@ function ExpenseRow({ expense, onClick }) {
   );
 }
 
-export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode }) {
+const CAT_COLORS = ['#d97a3a','#e8c44a','#d36ba0','#5a8ed4','#4a7a3a','#a677d0','#c07a3a','#8a8a8a'];
+
+export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode, allCategories, customCategories, onSaveCategory }) {
   const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : '');
   const [category, setCategory] = useState(initial?.category || '');
   const [date, setDate] = useState(initial?.date || new Date().toISOString());
@@ -158,6 +161,10 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode }) {
   const [catSheet, setCatSheet] = useState(false);
   const [dateSheet, setDateSheet] = useState(false);
   const [pendingDate, setPendingDate] = useState(date);
+  const [addingCat, setAddingCat] = useState(false);
+  const [newCatLabel, setNewCatLabel] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('');
+  const [newCatColor, setNewCatColor] = useState('#8a8a8a');
 
   const totalAmt = parseFloat(amount) || 0;
   const mc = splitMembers.length;
@@ -195,6 +202,8 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode }) {
     setMemberInput('');
   }
 
+  const cats = allCategories || CATEGORIES;
+
   function handleSave() {
     if (!isValid) return;
     onSave({
@@ -206,6 +215,14 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode }) {
         ? { type: splitType, members: computedSplits }
         : null,
     });
+  }
+
+  function handleSaveNewCategory() {
+    const label = newCatLabel.trim().toUpperCase();
+    if (!label || !newCatIcon.trim()) return;
+    const cat = { id: 'cat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), label, icon: newCatIcon.trim(), color: newCatColor };
+    onSaveCategory?.(cat);
+    setNewCatLabel(''); setNewCatIcon(''); setNewCatColor('#8a8a8a'); setAddingCat(false);
   }
 
   const headerTitle = mode === 'edit' ? 'EDIT EXPENSE' : 'ADD EXPENSE';
@@ -247,12 +264,12 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode }) {
         ),
         React.createElement('div', { className: 'field', onClick: () => setCatSheet(true) },
           React.createElement('div', { className: 'field-inner' },
-            category
+            category && cats[category]
               ? React.createElement(React.Fragment, null,
                   React.createElement('div', { style: { width: 22, height: 22, display: 'grid', placeItems: 'center' } },
-                    React.createElement(CATEGORIES[category].Icon, { size: 22 })
+                    React.createElement(cats[category].Icon, { size: 22 })
                   ),
-                  React.createElement('span', { className: 'value-text' }, CATEGORIES[category].label)
+                  React.createElement('span', { className: 'value-text' }, cats[category].label)
                 )
               : React.createElement('span', { className: 'placeholder-text' }, 'SELECT CATEGORY'),
             React.createElement('span', { className: 'spacer' }),
@@ -379,11 +396,11 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode }) {
         )
       ),
 
-      catSheet && React.createElement(Sheet, { title: 'SELECT CATEGORY', onClose: () => setCatSheet(false) },
+      catSheet && React.createElement(Sheet, { title: 'SELECT CATEGORY', onClose: () => { setCatSheet(false); setAddingCat(false); } },
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
-          Object.values(CATEGORIES).map(c => React.createElement('div', {
+          Object.values(cats).map(c => React.createElement('div', {
             key: c.id, className: 'cell',
-            onClick: () => { setCategory(c.id); setCatSheet(false); },
+            onClick: () => { setCategory(c.id); setCatSheet(false); setAddingCat(false); },
           },
             React.createElement('div', { className: 'cell-inner' },
               React.createElement('div', { style: { width: 28, height: 28, display: 'grid', placeItems: 'center' } },
@@ -392,7 +409,57 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode }) {
               React.createElement('span', { className: 'font-pixel', style: { fontSize: 12, flex: 1 } }, c.label),
               React.createElement('span', { className: 'chev' }, '›')
             )
-          ))
+          )),
+          !addingCat && React.createElement('div', {
+            className: 'cell', onClick: () => setAddingCat(true),
+          },
+            React.createElement('div', { className: 'cell-inner' },
+              React.createElement('span', { className: 'font-pixel', style: { fontSize: 12, flex: 1, color: 'var(--green-dark)' } }, '+ ADD CATEGORY'),
+              React.createElement('span', { className: 'chev' }, '›')
+            )
+          ),
+          addingCat && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' } },
+            React.createElement('div', { className: 'field' },
+              React.createElement('div', { className: 'field-inner' },
+                React.createElement('input', {
+                  type: 'text', value: newCatLabel, placeholder: 'CATEGORY NAME', maxLength: 16,
+                  onChange: e => setNewCatLabel(e.target.value.toUpperCase()),
+                  style: { flex: 1 },
+                })
+              )
+            ),
+            React.createElement('div', { className: 'field' },
+              React.createElement('div', { className: 'field-inner' },
+                React.createElement('input', {
+                  type: 'text', value: newCatIcon, placeholder: 'EMOJI (E.G. 🎮)', maxLength: 2,
+                  onChange: e => setNewCatIcon(e.target.value),
+                  style: { flex: 1, fontSize: 20 },
+                })
+              )
+            ),
+            React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+              CAT_COLORS.map(col => React.createElement('div', {
+                key: col,
+                onClick: () => setNewCatColor(col),
+                style: {
+                  width: 28, height: 28, background: col, cursor: 'pointer',
+                  outline: newCatColor === col ? '3px solid var(--ink)' : '2px solid transparent',
+                  outlineOffset: 2,
+                },
+              }))
+            ),
+            React.createElement('div', { style: { display: 'flex', gap: 8 } },
+              React.createElement(PixelButton, {
+                onClick: handleSaveNewCategory,
+                disabled: !newCatLabel.trim() || !newCatIcon.trim(),
+                icon: React.createElement(SaveGlyph, { size: 12 }),
+                style: { flex: 1 },
+              }, 'SAVE'),
+              React.createElement(PixelButton, {
+                ghost: true, onClick: () => setAddingCat(false), style: { flex: 1 },
+              }, 'CANCEL')
+            )
+          )
         )
       ),
 
@@ -406,8 +473,9 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode }) {
   );
 }
 
-export function DetailScreen({ expense, onBack, onEdit, onDelete, onShare }) {
-  const cat = CATEGORIES[expense.category] || CATEGORIES.other;
+export function DetailScreen({ expense, onBack, onEdit, onDelete, onShare, allCategories }) {
+  const cats = allCategories || CATEGORIES;
+  const cat = cats[expense.category] || cats.other || CATEGORIES.other;
   const IconCmp = (expense.category === 'food' && expense.iconVariant === 'coffee') ? CoffeeIcon : cat.Icon;
   const hasSplit = expense.split && expense.split.members && expense.split.members.length > 0;
 
@@ -477,7 +545,8 @@ export function DetailScreen({ expense, onBack, onEdit, onDelete, onShare }) {
   );
 }
 
-export function StatsScreen({ expenses, onBack }) {
+export function StatsScreen({ expenses, onBack, allCategories }) {
+  const cats = allCategories || CATEGORIES;
   const totals = useMemo(() => {
     const byCat = {};
     let total = 0;
@@ -489,7 +558,7 @@ export function StatsScreen({ expenses, onBack }) {
   }, [expenses]);
 
   const max = Math.max(1, ...Object.values(totals.byCat));
-  const rows = Object.values(CATEGORIES).map(c => ({
+  const rows = Object.values(cats).map(c => ({
     id: c.id, label: c.label, amount: totals.byCat[c.id] || 0,
   })).sort((a, b) => b.amount - a.amount);
 
@@ -547,8 +616,9 @@ export function MenuSheet({ onClose, onSignOut, onCarTracker }) {
   );
 }
 
-export function ShareSheet({ expense, onClose, onCopy }) {
-  const cat = CATEGORIES[expense.category] || CATEGORIES.other;
+export function ShareSheet({ expense, onClose, onCopy, allCategories }) {
+  const cats = allCategories || CATEGORIES;
+  const cat = cats[expense.category] || cats.other || CATEGORIES.other;
   const shareText = `I spent ${formatINR(expense.amount)} on ${cat.label.toLowerCase()} (${formatDateShort(expense.date)})${expense.note ? ' — ' + expense.note : ''}`;
   return React.createElement(Sheet, { title: 'SHARE SPEND', onClose },
     React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },

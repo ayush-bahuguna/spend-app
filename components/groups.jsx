@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useMemo } from 'react';
 import {
-  CATEGORIES, SlimeSprite,
-  BackGlyph, PlusGlyph, TrashGlyph, SaveGlyph, PeopleGlyph, SplitGlyph, CheckGlyph,
+  CATEGORIES, buildCustomCategory, SlimeSprite,
+  BackGlyph, PlusGlyph, TrashGlyph, SaveGlyph, EditGlyph, PeopleGlyph, SplitGlyph, CheckGlyph,
   MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph, ShareGlyph, MenuGlyph, KebabGlyph, DashboardGlyph,
   GroupPeopleIcon, GroupHomeIcon, GroupStarIcon, GroupHeartIcon, TravelIcon,
 } from './icons';
@@ -207,8 +207,9 @@ export function CreateGroupScreen({ onSave, onCancel }) {
   );
 }
 
-function GroupExpenseCard({ exp, group, currentUserId, onClick }) {
-  const cat = CATEGORIES[exp.category] || CATEGORIES.other;
+function GroupExpenseCard({ exp, group, currentUserId, allCategories, onClick }) {
+  const cats = allCategories || CATEGORIES;
+  const cat = cats[exp.category] || cats.other || CATEGORIES.other;
   const payer = group.members.find(m => m.id === exp.paidById);
   const myMember = currentUserId ? (group.members || []).find(m => m.userId === currentUserId) : null;
   const myId = myMember?.id;
@@ -254,7 +255,7 @@ function GroupExpenseCard({ exp, group, currentUserId, onClick }) {
   );
 }
 
-export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode, onRefresh, onOpenDashboard }) {
+export function GroupDetailScreen({ group, currentUserId, allCategories, onBack, onAddExpense, onDeleteGroup, onOpenExpense, onGenerateCode, onRefresh, onOpenDashboard }) {
   const [tab, setTab]               = useState('expenses');
   const [groupMenu, setGroupMenu]   = useState(false);
   const [deleteSheet, setDeleteSheet] = useState(false);
@@ -324,7 +325,7 @@ export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, 
       )
     : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
         [...(group.expenses || [])].reverse().map(exp =>
-          React.createElement(GroupExpenseCard, { key: exp.id, exp, group, currentUserId, onClick: () => onOpenExpense(exp.id) })
+          React.createElement(GroupExpenseCard, { key: exp.id, exp, group, currentUserId, allCategories, onClick: () => onOpenExpense(exp.id) })
         )
       );
 
@@ -421,20 +422,36 @@ export function GroupDetailScreen({ group, currentUserId, onBack, onAddExpense, 
   );
 }
 
-export function GroupAddExpenseScreen({ group, currentUserId, onSave, onCancel }) {
+const CAT_COLORS = ['#d97a3a','#e8c44a','#d36ba0','#5a8ed4','#4a7a3a','#a677d0','#c07a3a','#8a8a8a'];
+
+export function GroupAddExpenseScreen({ group, currentUserId, initial, allCategories, customCategories, onSave, onCancel, onDelete, onSaveCategory }) {
   const myMember = currentUserId ? (group.members || []).find(m => m.userId === currentUserId) : null;
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('');
-  const [date, setDate] = useState(new Date().toISOString());
-  const [note, setNote] = useState('');
-  const [paidById, setPaidById] = useState(() => myMember?.id || group.members[0]?.id || '');
-  const [splitType, setSplitType] = useState('equal');
-  const [splitVals, setSplitVals] = useState({});
+  const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : '');
+  const [category, setCategory] = useState(initial?.category || '');
+  const [date, setDate] = useState(initial?.date || new Date().toISOString());
+  const [note, setNote] = useState(initial?.note || '');
+  const [paidById, setPaidById] = useState(() => initial?.paidById || myMember?.id || group.members[0]?.id || '');
+  const [splitType, setSplitType] = useState(initial?.splitType || 'equal');
+  const [splitVals, setSplitVals] = useState(() => {
+    if (!initial || initial.splitType === 'equal') return {};
+    const vals = {};
+    (initial.splits || []).forEach(s => {
+      vals[s.memberId] = initial.splitType === 'percent'
+        ? String(Math.round((s.value / Number(initial.amount)) * 100))
+        : String(s.value);
+    });
+    return vals;
+  });
 
   const [catSheet, setCatSheet] = useState(false);
   const [dateSheet, setDateSheet] = useState(false);
   const [paidSheet, setPaidSheet] = useState(false);
+  const [deleteSheet, setDeleteSheet] = useState(false);
   const [pendingDate, setPendingDate] = useState(date);
+  const [addingCat, setAddingCat] = useState(false);
+  const [newCatLabel, setNewCatLabel] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('');
+  const [newCatColor, setNewCatColor] = useState('#8a8a8a');
 
   const totalAmt = parseFloat(amount) || 0;
   const mc = group.members.length;
@@ -467,19 +484,30 @@ export function GroupAddExpenseScreen({ group, currentUserId, onSave, onCancel }
   function handleSave() {
     if (!isValid) return;
     onSave({
-      id: 'ge_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      id: initial ? initial.id : 'ge_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       amount: totalAmt, category, date, note: note.trim(),
       paidById, splitType, splits: computedSplits,
     });
   }
 
+  function handleSaveNewCategory() {
+    const label = newCatLabel.trim().toUpperCase();
+    if (!label || !newCatIcon.trim()) return;
+    const cat = { id: 'cat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), label, icon: newCatIcon.trim(), color: newCatColor };
+    onSaveCategory?.(cat);
+    setNewCatLabel(''); setNewCatIcon(''); setNewCatColor('#8a8a8a'); setAddingCat(false);
+  }
+
   const paidByMember = group.members.find(m => m.id === paidById);
+  const cats = allCategories || CATEGORIES;
 
   const header = React.createElement(CardHeader, {
-    title: 'ADD EXPENSE',
+    title: initial ? 'EDIT EXPENSE' : 'ADD EXPENSE',
     subtitle: group.name.length > 12 ? group.name.slice(0, 12) + '…' : group.name,
     left: React.createElement(IconButton, { onClick: onCancel }, React.createElement(BackGlyph, { size: 18 })),
-    right: React.createElement('div'),
+    right: onDelete
+      ? React.createElement(IconButton, { onClick: () => setDeleteSheet(true) }, React.createElement(TrashGlyph, { size: 16 }))
+      : React.createElement('div'),
   });
 
   const footer = React.createElement(PixelButton, {
@@ -505,12 +533,12 @@ export function GroupAddExpenseScreen({ group, currentUserId, onSave, onCancel }
         React.createElement('div', { className: 'field-label' }, React.createElement(FolderGlyph, { size: 16 }), 'CATEGORY'),
         React.createElement('div', { className: 'field', onClick: () => setCatSheet(true) },
           React.createElement('div', { className: 'field-inner' },
-            category
+            category && cats[category]
               ? React.createElement(React.Fragment, null,
                   React.createElement('div', { style: { width: 22, height: 22, display: 'grid', placeItems: 'center' } },
-                    React.createElement(CATEGORIES[category].Icon, { size: 22 })
+                    React.createElement(cats[category].Icon, { size: 22 })
                   ),
-                  React.createElement('span', { className: 'value-text' }, CATEGORIES[category].label)
+                  React.createElement('span', { className: 'value-text' }, cats[category].label)
                 )
               : React.createElement('span', { className: 'placeholder-text' }, 'SELECT CATEGORY'),
             React.createElement('span', { className: 'spacer' }),
@@ -604,11 +632,11 @@ export function GroupAddExpenseScreen({ group, currentUserId, onSave, onCancel }
         )
       ),
 
-      catSheet && React.createElement(Sheet, { title: 'CATEGORY', onClose: () => setCatSheet(false) },
+      catSheet && React.createElement(Sheet, { title: 'CATEGORY', onClose: () => { setCatSheet(false); setAddingCat(false); } },
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
-          Object.values(CATEGORIES).map(c => React.createElement('div', {
+          Object.values(cats).map(c => React.createElement('div', {
             key: c.id, className: 'cell',
-            onClick: () => { setCategory(c.id); setCatSheet(false); },
+            onClick: () => { setCategory(c.id); setCatSheet(false); setAddingCat(false); },
           },
             React.createElement('div', { className: 'cell-inner' },
               React.createElement('div', { style: { width: 28, height: 28, display: 'grid', placeItems: 'center' } },
@@ -617,7 +645,57 @@ export function GroupAddExpenseScreen({ group, currentUserId, onSave, onCancel }
               React.createElement('span', { className: 'font-pixel', style: { fontSize: 12, flex: 1 } }, c.label),
               React.createElement('span', { className: 'chev' }, '›')
             )
-          ))
+          )),
+          !addingCat && React.createElement('div', {
+            className: 'cell', onClick: () => setAddingCat(true),
+          },
+            React.createElement('div', { className: 'cell-inner' },
+              React.createElement('span', { className: 'font-pixel', style: { fontSize: 12, flex: 1, color: 'var(--green-dark)' } }, '+ ADD CATEGORY'),
+              React.createElement('span', { className: 'chev' }, '›')
+            )
+          ),
+          addingCat && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' } },
+            React.createElement('div', { className: 'field' },
+              React.createElement('div', { className: 'field-inner' },
+                React.createElement('input', {
+                  type: 'text', value: newCatLabel, placeholder: 'CATEGORY NAME', maxLength: 16,
+                  onChange: e => setNewCatLabel(e.target.value.toUpperCase()),
+                  style: { flex: 1 },
+                })
+              )
+            ),
+            React.createElement('div', { className: 'field' },
+              React.createElement('div', { className: 'field-inner' },
+                React.createElement('input', {
+                  type: 'text', value: newCatIcon, placeholder: 'EMOJI (E.G. 🎮)', maxLength: 2,
+                  onChange: e => setNewCatIcon(e.target.value),
+                  style: { flex: 1, fontSize: 20 },
+                })
+              )
+            ),
+            React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+              CAT_COLORS.map(col => React.createElement('div', {
+                key: col,
+                onClick: () => setNewCatColor(col),
+                style: {
+                  width: 28, height: 28, background: col, cursor: 'pointer',
+                  outline: newCatColor === col ? '3px solid var(--ink)' : '2px solid transparent',
+                  outlineOffset: 2,
+                },
+              }))
+            ),
+            React.createElement('div', { style: { display: 'flex', gap: 8 } },
+              React.createElement(PixelButton, {
+                onClick: handleSaveNewCategory,
+                disabled: !newCatLabel.trim() || !newCatIcon.trim(),
+                icon: React.createElement(SaveGlyph, { size: 12 }),
+                style: { flex: 1 },
+              }, 'SAVE'),
+              React.createElement(PixelButton, {
+                ghost: true, onClick: () => setAddingCat(false), style: { flex: 1 },
+              }, 'CANCEL')
+            )
+          )
         )
       ),
 
@@ -641,12 +719,27 @@ export function GroupAddExpenseScreen({ group, currentUserId, onSave, onCancel }
           ))
         )
       ),
+
+      deleteSheet && React.createElement(Sheet, { title: 'DELETE EXPENSE?', onClose: () => setDeleteSheet(false) },
+        React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+          React.createElement('div', { className: 'empty-sub', style: { textAlign: 'left' } },
+            'THIS WILL PERMANENTLY DELETE THIS EXPENSE. THIS CANNOT BE UNDONE.'
+          ),
+          React.createElement(PixelButton, {
+            danger: true,
+            onClick: () => { setDeleteSheet(false); onDelete?.(); },
+            icon: React.createElement(TrashGlyph, { size: 14 }),
+          }, 'YES, DELETE'),
+          React.createElement(PixelButton, { ghost: true, onClick: () => setDeleteSheet(false) }, 'CANCEL')
+        )
+      ),
     )
   );
 }
 
-export function GroupExpenseDetailScreen({ expense, group, onBack }) {
-  const cat = CATEGORIES[expense.category] || CATEGORIES.other;
+export function GroupExpenseDetailScreen({ expense, group, allCategories, onBack, onEdit }) {
+  const cats = allCategories || CATEGORIES;
+  const cat = cats[expense.category] || cats.other || CATEGORIES.other;
   const payer = group.members.find(m => m.id === expense.paidById);
   const clipPath = 'polygon(0 6px,3px 6px,3px 3px,6px 3px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 3px,calc(100% - 3px) 3px,calc(100% - 3px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 3px) calc(100% - 6px),calc(100% - 3px) calc(100% - 3px),calc(100% - 6px) calc(100% - 3px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 3px),3px calc(100% - 3px),3px calc(100% - 6px),0 calc(100% - 6px))';
   const chipPath = 'polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px))';
@@ -655,10 +748,18 @@ export function GroupExpenseDetailScreen({ expense, group, onBack }) {
     title: 'EXPENSE',
     subtitle: group.name.length > 10 ? group.name.slice(0, 10) + '…' : group.name,
     left: React.createElement(IconButton, { onClick: onBack }, React.createElement(BackGlyph, { size: 18 })),
-    right: React.createElement('div'),
+    right: onEdit
+      ? React.createElement(IconButton, { onClick: onEdit }, React.createElement(EditGlyph, { size: 16 }))
+      : React.createElement('div'),
   });
 
-  const footer = React.createElement(PixelButton, { ghost: true, onClick: onBack }, 'BACK');
+  const footer = React.createElement(React.Fragment, null,
+    onEdit && React.createElement(PixelButton, {
+      onClick: onEdit,
+      icon: React.createElement(EditGlyph, { size: 14 }),
+    }, 'EDIT EXPENSE'),
+    React.createElement(PixelButton, { ghost: true, onClick: onBack }, 'BACK')
+  );
 
   return React.createElement('div', { className: 'screen' },
     React.createElement(MainCard, { header, footer },

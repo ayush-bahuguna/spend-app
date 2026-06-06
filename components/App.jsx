@@ -1,7 +1,7 @@
 'use client';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Toast } from './ui';
-import { SlimeSprite } from './icons';
+import { SlimeSprite, CATEGORIES, buildCustomCategory } from './icons';
 import {
   HomeScreen, AddEditScreen, DetailScreen, StatsScreen, MenuSheet, ShareSheet,
 } from './screens';
@@ -13,8 +13,10 @@ import { CarScreen, CarAddScreen, CarTripDetailScreen } from './car';
 import { getSupabase } from '../lib/supabase';
 import {
   fetchExpenses, upsertExpense, deleteExpense, upsertManyExpenses,
-  fetchGroups, createGroup, deleteGroup, addGroupExpense, joinGroupByCode, upsertManyGroups, updateGroupJoinCode,
+  fetchGroups, createGroup, deleteGroup, addGroupExpense, updateGroupExpense, deleteGroupExpense,
+  joinGroupByCode, upsertManyGroups, updateGroupJoinCode,
   fetchCarTrips, upsertCarTrip, deleteCarTrip,
+  fetchUserCategories, saveUserCategory,
 } from '../lib/db';
 
 const STORAGE_KEY   = 'spend_expenses_v1';
@@ -75,14 +77,15 @@ async function maybeRunMigration(userId, cachedExp, cachedGroups) {
 // ─── App ────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [expenses,    setExpenses]    = useState([]);
-  const [groups,      setGroups]      = useState([]);
-  const [carTrips,    setCarTrips]    = useState([]);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [route,       setRoute]       = useState({ name: 'home' });
-  const [toast,       setToast]       = useState('');
-  const [menuOpen,    setMenuOpen]    = useState(false);
-  const [shareTarget, setShareTarget] = useState(null);
+  const [expenses,         setExpenses]         = useState([]);
+  const [groups,           setGroups]           = useState([]);
+  const [carTrips,         setCarTrips]         = useState([]);
+  const [customCategories, setCustomCategories] = useState([]);
+  const [dataLoading,      setDataLoading]      = useState(true);
+  const [route,            setRoute]            = useState({ name: 'home' });
+  const [toast,            setToast]            = useState('');
+  const [menuOpen,         setMenuOpen]         = useState(false);
+  const [shareTarget,      setShareTarget]      = useState(null);
   const userIdRef   = useRef(null);
   const userNameRef = useRef('ME');
   const realtimeRef = useRef(null);
@@ -124,6 +127,7 @@ export default function App() {
       } catch (e) {
         console.warn('DB fetch failed, using cache/sample:', e);
       }
+      fetchUserCategories(userId).then(setCustomCategories).catch(() => {});
       if (cancelled) return;
 
       const finalExp    = remoteExp.length    ? remoteExp    : (cachedExp.length    ? cachedExp    : []);
@@ -185,7 +189,7 @@ export default function App() {
   // Poll for group updates while viewing a group screen.
   // dataLoading in deps ensures this re-runs after init() sets userIdRef.current.
   useEffect(() => {
-    const GROUP_ROUTES = ['group-detail', 'group-add-expense', 'group-expense-detail', 'group-dashboard'];
+    const GROUP_ROUTES = ['group-detail', 'group-add-expense', 'group-expense-detail', 'group-dashboard', 'group-edit-expense'];
     if (!GROUP_ROUTES.includes(route.name) || !userIdRef.current) return;
     function refresh() {
       fetchGroups(userIdRef.current)
@@ -204,6 +208,17 @@ export default function App() {
       .catch(err => { console.error('manual refresh failed:', err); setToast('SYNC FAILED'); });
   }, []);
 
+  // ── Categories ───────────────────────────────────────────────────────────
+  const allCategories = useMemo(() => {
+    const custom = Object.fromEntries(customCategories.map(c => [c.id, buildCustomCategory(c)]));
+    return { ...CATEGORIES, ...custom };
+  }, [customCategories]);
+
+  function handleSaveCustomCategory(cat) {
+    setCustomCategories(prev => [...prev, cat]);
+    if (userIdRef.current) saveUserCategory(userIdRef.current, cat).catch(console.error);
+  }
+
   // ── Navigation ───────────────────────────────────────────────────────────
   const goHome         = useCallback(() => setRoute({ name: 'home' }), []);
   const goAdd          = useCallback(() => setRoute({ name: 'add' }), []);
@@ -215,6 +230,7 @@ export default function App() {
   const goGroupAddExp  = useCallback((id) => setRoute({ name: 'group-add-expense', id }), []);
   const goGroupExpDetail = useCallback((groupId, expId) => setRoute({ name: 'group-expense-detail', groupId, expId }), []);
   const goGroupDashboard = useCallback((id) => setRoute({ name: 'group-dashboard', id }), []);
+  const goGroupEditExp = useCallback((groupId, expId) => setRoute({ name: 'group-edit-expense', groupId, expId }), []);
 
   // ── Expense mutations ────────────────────────────────────────────────────
   function handleSave(expense) {
@@ -349,6 +365,38 @@ export default function App() {
     }
   }
 
+  async function handleUpdateGroupExpense(groupId, expense) {
+    setGroups(prev => {
+      const next = prev.map(g => {
+        if (g.id !== groupId) return g;
+        return { ...g, expenses: (g.expenses || []).map(e => e.id === expense.id ? expense : e) };
+      });
+      writeLocalGroups(next);
+      return next;
+    });
+    goGroupExpDetail(groupId, expense.id);
+    if (userIdRef.current) {
+      updateGroupExpense(groupId, expense).catch(console.error);
+    }
+    setToast('EXPENSE UPDATED');
+  }
+
+  async function handleDeleteGroupExpense(groupId, expId) {
+    setGroups(prev => {
+      const next = prev.map(g => {
+        if (g.id !== groupId) return g;
+        return { ...g, expenses: (g.expenses || []).filter(e => e.id !== expId) };
+      });
+      writeLocalGroups(next);
+      return next;
+    });
+    goGroupDetail(groupId);
+    if (userIdRef.current) {
+      deleteGroupExpense(expId).catch(console.error);
+    }
+    setToast('EXPENSE DELETED');
+  }
+
   async function handleJoinGroup(code) {
     if (!userIdRef.current) return;
     try {
@@ -388,14 +436,14 @@ export default function App() {
   // ── Guard: stale routes ──────────────────────────────────────────────────
   const currentExpense = (route.name === 'detail' || route.name === 'edit')
     ? expenses.find(e => e.id === route.id) : null;
-  const currentGroup = (route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail' || route.name === 'group-dashboard')
+  const currentGroup = (route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail' || route.name === 'group-dashboard' || route.name === 'group-edit-expense')
     ? groups.find(g => g.id === (route.id || route.groupId)) : null;
 
   useEffect(() => {
     if ((route.name === 'detail' || route.name === 'edit') && !currentExpense && !dataLoading) setRoute({ name: 'home' });
   }, [route, currentExpense, dataLoading]);
   useEffect(() => {
-    if ((route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail' || route.name === 'group-dashboard') && !currentGroup && !dataLoading) setRoute({ name: 'home' });
+    if ((route.name === 'group-detail' || route.name === 'group-add-expense' || route.name === 'group-expense-detail' || route.name === 'group-dashboard' || route.name === 'group-edit-expense') && !currentGroup && !dataLoading) setRoute({ name: 'home' });
   }, [route, currentGroup, dataLoading]);
 
   // ── Loading screen ───────────────────────────────────────────────────────
@@ -412,19 +460,23 @@ export default function App() {
   let screen;
   if (route.name === 'home') {
     screen = React.createElement(HomeScreen, {
-      expenses, groups,
+      expenses, groups, allCategories,
       onAdd: goAdd, onOpen: goDetail, onStats: goStats, onMenu: () => setMenuOpen(true),
       onCreateGroup: goCreateGroup, onOpenGroup: goGroupDetail,
       onJoinGroup: handleJoinGroup,
     });
   } else if (route.name === 'add') {
-    screen = React.createElement(AddEditScreen, { mode: 'add', onSave: handleSave, onCancel: goHome });
+    screen = React.createElement(AddEditScreen, {
+      mode: 'add', onSave: handleSave, onCancel: goHome,
+      allCategories, customCategories, onSaveCategory: handleSaveCustomCategory,
+    });
   } else if (route.name === 'edit' && currentExpense) {
     screen = React.createElement(AddEditScreen, {
       mode: 'edit', initial: currentExpense,
       onSave: handleSave,
       onCancel: () => goDetail(currentExpense.id),
       onDelete: () => handleDelete(currentExpense.id),
+      allCategories, customCategories, onSaveCategory: handleSaveCustomCategory,
     });
   } else if (route.name === 'detail' && currentExpense) {
     screen = React.createElement(DetailScreen, {
@@ -432,15 +484,17 @@ export default function App() {
       onEdit: () => goEdit(currentExpense.id),
       onDelete: () => handleDelete(currentExpense.id),
       onShare: () => setShareTarget(currentExpense),
+      allCategories,
     });
   } else if (route.name === 'stats') {
-    screen = React.createElement(StatsScreen, { expenses, onBack: goHome });
+    screen = React.createElement(StatsScreen, { expenses, onBack: goHome, allCategories });
   } else if (route.name === 'create-group') {
     screen = React.createElement(CreateGroupScreen, { onSave: handleSaveGroup, onCancel: goHome });
   } else if (route.name === 'group-detail' && currentGroup) {
     screen = React.createElement(GroupDetailScreen, {
       group: currentGroup,
       currentUserId: userIdRef.current,
+      allCategories,
       onBack: goHome,
       onAddExpense: () => goGroupAddExp(currentGroup.id),
       onDeleteGroup: () => handleDeleteGroup(currentGroup.id),
@@ -453,6 +507,7 @@ export default function App() {
     screen = React.createElement(GroupDashboardScreen, {
       group: currentGroup,
       currentUserId: userIdRef.current,
+      allCategories,
       onBack: () => goGroupDetail(currentGroup.id),
     });
   } else if (route.name === 'group-expense-detail' && currentGroup) {
@@ -461,16 +516,32 @@ export default function App() {
       screen = React.createElement(GroupExpenseDetailScreen, {
         expense: currentGroupExp,
         group: currentGroup,
+        allCategories,
         onBack: () => goGroupDetail(currentGroup.id),
+        onEdit: () => goGroupEditExp(currentGroup.id, route.expId),
       });
     }
   } else if (route.name === 'group-add-expense' && currentGroup) {
     screen = React.createElement(GroupAddExpenseScreen, {
       group: currentGroup,
       currentUserId: userIdRef.current,
+      allCategories, customCategories, onSaveCategory: handleSaveCustomCategory,
       onSave: (exp) => handleSaveGroupExpense(currentGroup.id, exp),
       onCancel: () => goGroupDetail(currentGroup.id),
     });
+  } else if (route.name === 'group-edit-expense' && currentGroup) {
+    const currentGroupExp = (currentGroup.expenses || []).find(e => e.id === route.expId);
+    if (currentGroupExp) {
+      screen = React.createElement(GroupAddExpenseScreen, {
+        group: currentGroup,
+        currentUserId: userIdRef.current,
+        initial: currentGroupExp,
+        allCategories, customCategories, onSaveCategory: handleSaveCustomCategory,
+        onSave: (exp) => handleUpdateGroupExpense(currentGroup.id, exp),
+        onCancel: () => goGroupExpDetail(currentGroup.id, route.expId),
+        onDelete: () => handleDeleteGroupExpense(currentGroup.id, route.expId),
+      });
+    }
   } else if (route.name === 'car') {
     screen = React.createElement(CarScreen, {
       trips: carTrips, expenses,
@@ -503,6 +574,7 @@ export default function App() {
     }),
     shareTarget && React.createElement(ShareSheet, {
       expense: shareTarget,
+      allCategories,
       onClose: () => setShareTarget(null),
       onCopy: (text) => { copyToClipboard(text); setShareTarget(null); setToast('COPIED TO SHARE'); },
     }),

@@ -4,6 +4,7 @@ import {
   CATEGORIES, SlimeSprite,
   BackGlyph,
 } from './icons';
+
 import {
   PixelButton, IconButton, CardHeader, MainCard, TabBtn,
   formatINR,
@@ -37,7 +38,7 @@ function DashBar({ name, value, max, color, sub }) {
   );
 }
 
-export function GroupDashboardScreen({ group, currentUserId, onBack }) {
+export function GroupDashboardScreen({ group, currentUserId, allCategories, onBack }) {
   const [tab, setTab] = useState('members');
 
   const members = group.members || [];
@@ -180,8 +181,9 @@ export function GroupDashboardScreen({ group, currentUserId, onBack }) {
     content = React.createElement(React.Fragment, null,
       React.createElement('div', { className: 'dash-section-label' }, 'SPEND BY CATEGORY · MONTH'),
       ...months.map(mo => {
+        const catMap = allCategories || CATEGORIES;
         const cats = Object.keys(mo.byCat)
-          .map(id => ({ id, cat: CATEGORIES[id] || CATEGORIES.other, amount: mo.byCat[id] }))
+          .map(id => ({ id, cat: catMap[id] || catMap.other || CATEGORIES.other, amount: mo.byCat[id] }))
           .sort((a, b) => b.amount - a.amount);
         const max = Math.max(1, ...cats.map(c => c.amount));
         return React.createElement('div', { key: mo.key, className: 'cell is-flat' },
