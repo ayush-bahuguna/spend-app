@@ -54,22 +54,17 @@ input, textarea { font-family: inherit; }
 .font-pixel { font-family: 'Press Start 2P', monospace; letter-spacing: 0.02em; }
 .font-mono { font-family: 'VT323', monospace; }
 
-/* ----- App stage: fills viewport, contains a phone-sized screen ----- */
+/* ----- App stage: fills viewport, background image covers everything ----- */
 .app-stage {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  background: #0c1018;
+  background-image: url('/bg.png');
+  background-size: cover;
+  background-position: center bottom;
+  image-rendering: pixelated;
   overflow: hidden;
-}
-
-.app-stage::before {
-  content: '';
-  position: absolute; inset: 0;
-  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 8px 8px;
-  pointer-events: none;
 }
 
 .phone {
@@ -80,104 +75,18 @@ input, textarea { font-family: inherit; }
   max-width: 420px;
   max-height: 880px;
   overflow: hidden;
-  background: #6db8e8;
-  box-shadow: 0 0 0 4px #000, 0 0 0 12px #1a1610, 0 30px 80px rgba(0,0,0,0.6);
+  background: transparent;
 }
 @media (max-width: 440px) {
-  .phone { max-width: 100vw; max-height: 100svh; box-shadow: none; }
+  .phone { max-width: 100vw; max-height: 100svh; }
   .main-card {
     height: calc(100svh - 32px - env(safe-area-inset-bottom));
     max-height: none;
   }
 }
 
-/* ----- Pixel landscape background ----- */
-.landscape {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-  background: linear-gradient(180deg, #7cc3ed 0%, #9ad2f0 45%, #b5dff5 60%, #b5dff5 62%);
-}
-.landscape .sun {
-  position: absolute;
-  top: 8%; right: 10%;
-  width: 48px; height: 48px;
-  background: #fbe88a;
-  box-shadow: 0 0 0 4px #f6d65a, 0 0 0 8px rgba(251,232,138,0.25);
-}
-.landscape .cloud {
-  position: absolute;
-  background: #fff;
-  box-shadow:
-    -8px 0 0 0 #fff, 8px 0 0 0 #fff,
-    -16px 0 0 0 #fff, 16px 0 0 0 #fff,
-    -4px -8px 0 0 #fff, 4px -8px 0 0 #fff,
-    -12px -8px 0 0 #fff, 12px -8px 0 0 #fff,
-    0 -16px 0 0 #fff;
-}
-.landscape .cloud.c1 { top: 10%; left: 18%; width: 12px; height: 12px; }
-.landscape .cloud.c2 { top: 6%;  left: 60%; width: 12px; height: 12px; transform: scale(0.8); }
-.landscape .cloud.c3 { top: 22%; left: 78%; width: 12px; height: 12px; transform: scale(0.7); }
-.landscape .cloud.c4 { top: 28%; left: 8%;  width: 12px; height: 12px; transform: scale(0.6); }
-
-.landscape .tree-simple {
-  position: absolute;
-  bottom: 16%;
-  width: 56px; height: 88px;
-}
-.landscape .tree-simple .trunk {
-  position: absolute;
-  bottom: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 12px; height: 22px;
-  background: #4a3220;
-  box-shadow: inset -4px 0 0 0 #321f12;
-}
-.landscape .tree-simple .leaf {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #2d5a22;
-  box-shadow: inset -4px -4px 0 0 #1a3a14, inset 4px 4px 0 0 #3a7a2c;
-}
-.landscape .tree-simple .leaf.l1 { bottom: 18px; width: 56px; height: 16px; clip-path: polygon(0% 100%, 12% 100%, 12% 75%, 25% 75%, 25% 50%, 37% 50%, 37% 25%, 50% 25%, 50% 0%, 62% 0%, 62% 25%, 75% 25%, 75% 50%, 87% 50%, 87% 75%, 100% 75%, 100% 100%); }
-.landscape .tree-simple .leaf.l2 { bottom: 32px; width: 40px; height: 16px; clip-path: polygon(0% 100%, 15% 100%, 15% 70%, 30% 70%, 30% 40%, 50% 40%, 50% 10%, 70% 10%, 70% 40%, 85% 40%, 85% 70%, 100% 70%, 100% 100%); }
-.landscape .tree-simple .leaf.l3 { bottom: 46px; width: 24px; height: 14px; clip-path: polygon(0% 100%, 20% 100%, 20% 60%, 40% 60%, 40% 20%, 60% 20%, 60% 60%, 80% 60%, 80% 100%); }
-.landscape .tree-simple.t-left   { left: -8px;  transform: scale(1.05); }
-.landscape .tree-simple.t-left2  { left: 18%;   transform: scale(0.85); bottom: 14%; }
-.landscape .tree-simple.t-right  { right: -10px; transform: scale(1.1); }
-.landscape .tree-simple.t-right2 { right: 22%;  transform: scale(0.8);  bottom: 14%; }
-
-.landscape .grass {
-  position: absolute;
-  left: 0; right: 0; bottom: 8%; height: 12%;
-  background: linear-gradient(180deg, #3d7a2e 0%, #3d7a2e 50%, #2d5a22 50%, #2d5a22 100%);
-  box-shadow: inset 0 4px 0 #5a9a44;
-}
-.landscape .grass::before {
-  content: '';
-  position: absolute;
-  top: -8px; left: 0; right: 0; height: 8px;
-  background: repeating-linear-gradient(90deg,
-    transparent 0 12px, #3d7a2e 12px 16px,
-    transparent 16px 24px, #3d7a2e 24px 26px,
-    transparent 26px 40px);
-}
-.landscape .dirt {
-  position: absolute;
-  left: 0; right: 0; bottom: 0; height: 8%;
-  background:
-    repeating-linear-gradient(90deg, #6b4d2f 0 24px, #5a3f25 24px 48px),
-    linear-gradient(180deg, #6b4d2f, #4a3520);
-  box-shadow: inset 0 4px 0 #4a3520;
-}
-.landscape .dirt::before, .landscape .dirt::after {
-  content: ''; position: absolute; background: #3a2818;
-}
-.landscape .dirt::before { width: 8px; height: 8px; left: 22%; top: 30%; box-shadow: 16px 8px 0 0 #3a2818, 40px 0 0 0 #3a2818, 80px 12px 0 0 #3a2818; }
-.landscape .dirt::after  { width: 6px; height: 6px; right: 18%; top: 50%; box-shadow: -20px -6px 0 0 #3a2818, -50px 0 0 0 #3a2818; }
+/* landscape div is vestigial — background lives on .app-stage */
+.landscape { display: none; }
 
 /* ----- Pixel chrome ----- */
 .px-clip {
