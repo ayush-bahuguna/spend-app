@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useMemo } from 'react';
 import {
-  CATEGORIES, buildCustomCategory, CoffeeIcon, SlimeSprite,
+  CATEGORIES, buildCustomCategory, CUSTOM_CAT_ICONS, CoffeeIcon, SlimeSprite,
   MoneyBagGlyph, FolderGlyph, CalendarGlyph, NoteGlyph,
   MenuGlyph, ChartGlyph, BackGlyph, PlusGlyph, SaveGlyph, TrashGlyph, ShareGlyph, EditGlyph,
   PeopleGlyph, SplitGlyph, CheckGlyph, CarGlyph,
@@ -140,7 +140,6 @@ function ExpenseRow({ expense, allCategories, onClick }) {
   );
 }
 
-const CAT_COLORS = ['#d97a3a','#e8c44a','#d36ba0','#5a8ed4','#4a7a3a','#a677d0','#c07a3a','#8a8a8a'];
 
 export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode, allCategories, customCategories, onSaveCategory }) {
   const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : '');
@@ -163,8 +162,7 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode, allCa
   const [pendingDate, setPendingDate] = useState(date);
   const [addingCat, setAddingCat] = useState(false);
   const [newCatLabel, setNewCatLabel] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState('');
-  const [newCatColor, setNewCatColor] = useState('#8a8a8a');
+  const [newCatIconIdx, setNewCatIconIdx] = useState(0);
 
   const totalAmt = parseFloat(amount) || 0;
   const mc = splitMembers.length;
@@ -219,10 +217,11 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode, allCa
 
   function handleSaveNewCategory() {
     const label = newCatLabel.trim().toUpperCase();
-    if (!label || !newCatIcon.trim()) return;
-    const cat = { id: 'cat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), label, icon: newCatIcon.trim(), color: newCatColor };
+    if (!label) return;
+    const entry = CUSTOM_CAT_ICONS[newCatIconIdx];
+    const cat = { id: 'cat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), label, icon: entry.id, color: entry.color };
     onSaveCategory?.(cat);
-    setNewCatLabel(''); setNewCatIcon(''); setNewCatColor('#8a8a8a'); setAddingCat(false);
+    setNewCatLabel(''); setNewCatIconIdx(0); setAddingCat(false);
   }
 
   const headerTitle = mode === 'edit' ? 'EDIT EXPENSE' : 'ADD EXPENSE';
@@ -428,30 +427,36 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode, allCa
                 })
               )
             ),
-            React.createElement('div', { className: 'field' },
-              React.createElement('div', { className: 'field-inner' },
-                React.createElement('input', {
-                  type: 'text', value: newCatIcon, placeholder: 'EMOJI (E.G. 🎮)', maxLength: 2,
-                  onChange: e => setNewCatIcon(e.target.value),
-                  style: { flex: 1, fontSize: 20 },
-                })
+
+            /* Icon picker */
+            React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '4px 0' } },
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 20 } },
+                React.createElement('div', {
+                  style: { width: 32, height: 32, display: 'grid', placeItems: 'center', cursor: 'pointer', fontFamily: "'Press Start 2P', monospace", fontSize: 13, color: '#1a1610', userSelect: 'none', flexShrink: 0 },
+                  onClick: () => setNewCatIconIdx(i => (i - 1 + CUSTOM_CAT_ICONS.length) % CUSTOM_CAT_ICONS.length),
+                }, '◀'),
+                React.createElement('div', { style: { width: 68, height: 68, padding: 3, background: '#1a1610', display: 'grid', placeItems: 'center', clipPath: 'polygon(0 6px,3px 6px,3px 3px,6px 3px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 3px,calc(100% - 3px) 3px,calc(100% - 3px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 3px) calc(100% - 6px),calc(100% - 3px) calc(100% - 3px),calc(100% - 6px) calc(100% - 3px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 3px),3px calc(100% - 3px),3px calc(100% - 6px),0 calc(100% - 6px))' } },
+                  React.createElement('div', { style: { background: '#f4ead0', width: '100%', height: '100%', display: 'grid', placeItems: 'center', clipPath: 'polygon(0 6px,3px 6px,3px 3px,6px 3px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 3px,calc(100% - 3px) 3px,calc(100% - 3px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 3px) calc(100% - 6px),calc(100% - 3px) calc(100% - 3px),calc(100% - 6px) calc(100% - 3px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 3px),3px calc(100% - 3px),3px calc(100% - 6px),0 calc(100% - 6px))' } },
+                    React.createElement(CUSTOM_CAT_ICONS[newCatIconIdx].Icon, { size: 48 })
+                  )
+                ),
+                React.createElement('div', {
+                  style: { width: 32, height: 32, display: 'grid', placeItems: 'center', cursor: 'pointer', fontFamily: "'Press Start 2P', monospace", fontSize: 13, color: '#1a1610', userSelect: 'none', flexShrink: 0 },
+                  onClick: () => setNewCatIconIdx(i => (i + 1) % CUSTOM_CAT_ICONS.length),
+                }, '▶'),
+              ),
+              React.createElement('div', { style: { display: 'flex', gap: 5, marginTop: 2 } },
+                CUSTOM_CAT_ICONS.map((_, i) => React.createElement('div', {
+                  key: i,
+                  style: { width: i === newCatIconIdx ? 8 : 5, height: i === newCatIconIdx ? 8 : 5, background: i === newCatIconIdx ? '#1a1610' : '#c8b88a', transition: 'all 0.15s' },
+                }))
               )
             ),
-            React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-              CAT_COLORS.map(col => React.createElement('div', {
-                key: col,
-                onClick: () => setNewCatColor(col),
-                style: {
-                  width: 28, height: 28, background: col, cursor: 'pointer',
-                  outline: newCatColor === col ? '3px solid var(--ink)' : '2px solid transparent',
-                  outlineOffset: 2,
-                },
-              }))
-            ),
+
             React.createElement('div', { style: { display: 'flex', gap: 8 } },
               React.createElement(PixelButton, {
                 onClick: handleSaveNewCategory,
-                disabled: !newCatLabel.trim() || !newCatIcon.trim(),
+                disabled: !newCatLabel.trim(),
                 icon: React.createElement(SaveGlyph, { size: 12 }),
                 style: { flex: 1 },
               }, 'SAVE'),

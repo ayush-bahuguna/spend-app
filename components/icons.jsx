@@ -720,14 +720,137 @@ export const CATEGORIES = {
   other:       { id: 'other',       label: 'OTHER',       Icon: OtherIcon,    color: '#8a8a8a' },
 };
 
+/* ---------- Custom-category placeholder icons (16×16) ---------- */
+
+const GIFT_GRID = [
+  '                ',
+  '      g  g      ',
+  '      gggg      ',
+  '   gggggggggg   ',
+  '   ggggppgggg   ',
+  '   pppppppppp   ',
+  '   ggggppgggg   ',
+  '   ggggppgggg   ',
+  '   ggggppgggg   ',
+  '   ggggppgggg   ',
+  '   ggggppgggg   ',
+  '   ggggppgggg   ',
+  '                ',
+  '                ',
+  '                ',
+  '                ',
+];
+const GIFT_PAL = { g: '#5a8ed4', p: '#e8b84a' };
+function GiftIcon({ size = 28 }) {
+  return React.createElement(PixelSVG, { grid: GIFT_GRID, palette: GIFT_PAL, size });
+}
+
+const STAR_GRID = [
+  '                ',
+  '       ss       ',
+  '       ss       ',
+  '      ssss      ',
+  '      ssss      ',
+  '  ssssssssssss  ',
+  '   ssssssssss   ',
+  '    ssssssss    ',
+  '    ssssssss    ',
+  '   sss    sss   ',
+  '   ss      ss   ',
+  '  ss        ss  ',
+  '                ',
+  '                ',
+  '                ',
+  '                ',
+];
+const STAR_PAL = { s: '#e8b84a' };
+function StarIcon({ size = 28 }) {
+  return React.createElement(PixelSVG, { grid: STAR_GRID, palette: STAR_PAL, size });
+}
+
+const HEART_GRID = [
+  '                ',
+  '                ',
+  '   hhh    hhh   ',
+  '  hhhhh  hhhhh  ',
+  '  hhhhhhhhhhhh  ',
+  '  hhhhhhhhhhhh  ',
+  '  hhhhhhhhhhhh  ',
+  '   hhhhhhhhhh   ',
+  '    hhhhhhhh    ',
+  '     hhhhhh     ',
+  '      hhhh      ',
+  '       hh       ',
+  '                ',
+  '                ',
+  '                ',
+  '                ',
+];
+const HEART_PAL = { h: '#d44a6a' };
+function HeartIcon({ size = 28 }) {
+  return React.createElement(PixelSVG, { grid: HEART_GRID, palette: HEART_PAL, size });
+}
+
+const LEAF_GRID = [
+  '                ',
+  '          llll  ',
+  '        llllll  ',
+  '       lllvlll  ',
+  '      llllvlll  ',
+  '     llllvllll  ',
+  '    llllvlllll  ',
+  '   llllvllll    ',
+  '   lllvllll     ',
+  '  lllvllll      ',
+  '  llvll         ',
+  '   sv           ',
+  '   ss           ',
+  '                ',
+  '                ',
+  '                ',
+];
+const LEAF_PAL = { l: '#5aa840', v: '#3d7a2c', s: '#7a4a28' };
+function LeafIcon({ size = 28 }) {
+  return React.createElement(PixelSVG, { grid: LEAF_GRID, palette: LEAF_PAL, size });
+}
+
+const PAW_GRID = [
+  '                ',
+  '                ',
+  '  pp pp  pp pp  ',
+  '  pp pp  pp pp  ',
+  '                ',
+  '     pppppp     ',
+  '    pppppppp    ',
+  '    pppppppp    ',
+  '    pppppppp    ',
+  '     pppppp     ',
+  '                ',
+  '                ',
+  '                ',
+  '                ',
+  '                ',
+  '                ',
+];
+const PAW_PAL = { p: '#9a6a3a' };
+function PawIcon({ size = 28 }) {
+  return React.createElement(PixelSVG, { grid: PAW_GRID, palette: PAW_PAL, size });
+}
+
+export const CUSTOM_CAT_ICONS = [
+  { id: 'gift',  label: 'GIFT',  Icon: GiftIcon,  color: '#5a8ed4' },
+  { id: 'star',  label: 'STAR',  Icon: StarIcon,  color: '#e8b84a' },
+  { id: 'heart', label: 'HEART', Icon: HeartIcon, color: '#d44a6a' },
+  { id: 'leaf',  label: 'LEAF',  Icon: LeafIcon,  color: '#5aa840' },
+  { id: 'paw',   label: 'PAW',   Icon: PawIcon,   color: '#9a6a3a' },
+];
+
 export function buildCustomCategory({ id, label, icon, color }) {
-  const emoji = icon;
+  const entry = CUSTOM_CAT_ICONS.find(x => x.id === icon) || CUSTOM_CAT_ICONS[0];
   return {
     id,
     label: label.toUpperCase(),
-    color: color || '#8a8a8a',
-    Icon: ({ size }) => React.createElement('span', {
-      style: { fontSize: size * 0.72, lineHeight: 1, display: 'block', textAlign: 'center' },
-    }, emoji),
+    color: color || entry.color,
+    Icon: entry.Icon,
   };
 }
