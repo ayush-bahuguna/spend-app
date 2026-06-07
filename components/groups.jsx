@@ -7,7 +7,7 @@ import {
   GroupPeopleIcon, GroupHomeIcon, GroupStarIcon, GroupHeartIcon, TravelIcon,
 } from './icons';
 import {
-  PixelButton, IconButton, CardHeader, MainCard, Sheet, Calendar, TabBtn,
+  PixelButton, IconButton, CardHeader, MainCard, Sheet, Calendar, TabBtn, MarqueeText,
   formatINR, formatDateShort, formatDateInput,
 } from './ui';
 
@@ -36,7 +36,6 @@ export function calcBalances(group) {
 export function GroupCard({ group, onClick }) {
   const total = (group.expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
   const n = (group.members || []).length;
-  const label = group.name.length > 13 ? group.name.slice(0, 13) + '…' : group.name;
   const iconEntry = GROUP_ICONS.find(ic => ic.id === group.icon) || GROUP_ICONS[0];
   return React.createElement('div', { className: 'cell', onClick },
     React.createElement('div', { className: 'cell-inner' },
@@ -46,8 +45,8 @@ export function GroupCard({ group, onClick }) {
             React.createElement(iconEntry.Icon, { size: 28 })
           )
         ),
-        React.createElement('div', null,
-          React.createElement('div', { className: 'cat-name' }, label),
+        React.createElement('div', { style: { minWidth: 0 } },
+          React.createElement(MarqueeText, { className: 'cat-name' }, group.name),
           React.createElement('div', { className: 'cat-date' }, n + ' MEMBERS')
         ),
         React.createElement('div', { className: 'amount' }, formatINR(total)),
@@ -262,8 +261,6 @@ export function GroupDetailScreen({ group, currentUserId, allCategories, onBack,
   const [codeCopied, setCodeCopied] = useState(false);
   const balances = useMemo(() => calcBalances(group), [group]);
   const total = (group.expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
-  const title = group.name.length > 11 ? group.name.slice(0, 11) + '…' : group.name;
-
   function copyCode() {
     if (!group.joinCode) return;
     try {
@@ -298,7 +295,7 @@ export function GroupDetailScreen({ group, currentUserId, allCategories, onBack,
   }
 
   const header = React.createElement(CardHeader, {
-    title, subtitle: group.members.length + ' MEMBERS',
+    title: group.name, subtitle: group.members.length + ' MEMBERS',
     left:  React.createElement(IconButton, { onClick: onBack }, React.createElement(BackGlyph, { size: 18 })),
     right: React.createElement(IconButton, { onClick: () => setGroupMenu(true) }, React.createElement(KebabGlyph, { size: 18 })),
   });
@@ -503,7 +500,7 @@ export function GroupAddExpenseScreen({ group, currentUserId, initial, allCatego
 
   const header = React.createElement(CardHeader, {
     title: initial ? 'EDIT EXPENSE' : 'ADD EXPENSE',
-    subtitle: group.name.length > 12 ? group.name.slice(0, 12) + '…' : group.name,
+    subtitle: group.name,
     left: React.createElement(IconButton, { onClick: onCancel }, React.createElement(BackGlyph, { size: 18 })),
     right: onDelete
       ? React.createElement(IconButton, { onClick: () => setDeleteSheet(true) }, React.createElement(TrashGlyph, { size: 16 }))
@@ -746,7 +743,7 @@ export function GroupExpenseDetailScreen({ expense, group, allCategories, onBack
 
   const header = React.createElement(CardHeader, {
     title: 'EXPENSE',
-    subtitle: group.name.length > 10 ? group.name.slice(0, 10) + '…' : group.name,
+    subtitle: group.name,
     left: React.createElement(IconButton, { onClick: onBack }, React.createElement(BackGlyph, { size: 18 })),
     right: onEdit
       ? React.createElement(IconButton, { onClick: onEdit }, React.createElement(EditGlyph, { size: 16 }))

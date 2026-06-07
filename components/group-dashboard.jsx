@@ -89,7 +89,7 @@ export function GroupDashboardScreen({ group, currentUserId, allCategories, onBa
 
   const header = React.createElement(CardHeader, {
     title: 'DASHBOARD',
-    subtitle: group.name.length > 12 ? group.name.slice(0, 12) + '…' : group.name,
+    subtitle: group.name,
     left: React.createElement(IconButton, { onClick: onBack }, React.createElement(BackGlyph, { size: 18 })),
     right: React.createElement('div'),
   });

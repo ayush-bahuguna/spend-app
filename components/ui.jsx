@@ -26,13 +26,52 @@ export function IconButton({ children, onClick, style, title }) {
   );
 }
 
+export function MarqueeText({ children, className, style }) {
+  const outerRef = useRef(null);
+  const innerRef = useRef(null);
+  const [travel, setTravel] = useState(0);
+
+  useEffect(() => {
+    function measure() {
+      const outer = outerRef.current;
+      const inner = innerRef.current;
+      if (!outer || !inner) return;
+      const gap = inner.scrollWidth - outer.clientWidth;
+      setTravel(gap > 2 ? gap : 0);
+    }
+    document.fonts.ready.then(measure);
+  }, [children]);
+
+  const dur = Math.max(2, travel / 16);
+
+  return React.createElement('div', {
+    ref: outerRef,
+    className,
+    style: { overflow: 'hidden', ...style },
+  },
+    React.createElement('span', {
+      ref: innerRef,
+      style: travel > 0 ? {
+        display: 'inline-block',
+        whiteSpace: 'nowrap',
+        '--marq-travel': `${travel}px`,
+        animation: `marq ${dur}s ease-in-out 1s infinite alternate both`,
+      } : { display: 'inline' },
+    }, children)
+  );
+}
+
 export function CardHeader({ title, subtitle, left, right }) {
   return React.createElement('div', null,
     React.createElement('div', { className: 'card-header' },
       left || React.createElement('div'),
       React.createElement('div', null,
-        React.createElement('h1', null, title),
-        subtitle ? React.createElement('span', { className: 'sub' }, subtitle) : null
+        React.createElement('div', { className: 'card-title' },
+          React.createElement(MarqueeText, { style: { textAlign: 'center' } }, title)
+        ),
+        subtitle ? React.createElement('div', { className: 'sub' },
+          React.createElement(MarqueeText, { className: 'sub-text' }, subtitle)
+        ) : null
       ),
       right || React.createElement('div'),
     ),
