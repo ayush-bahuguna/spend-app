@@ -424,32 +424,20 @@ export function AddEditScreen({ initial, onSave, onCancel, onDelete, mode, allCa
                   type: 'text', value: newCatLabel, placeholder: 'CATEGORY NAME', maxLength: 16,
                   onChange: e => setNewCatLabel(e.target.value.toUpperCase()),
                   style: { flex: 1 },
-                })
-              )
-            ),
-
-            /* Icon picker */
-            React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '4px 0' } },
-              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 20 } },
-                React.createElement('div', {
-                  style: { width: 32, height: 32, display: 'grid', placeItems: 'center', cursor: 'pointer', fontFamily: "'Press Start 2P', monospace", fontSize: 13, color: '#1a1610', userSelect: 'none', flexShrink: 0 },
-                  onClick: () => setNewCatIconIdx(i => (i - 1 + CUSTOM_CAT_ICONS.length) % CUSTOM_CAT_ICONS.length),
-                }, '◀'),
-                React.createElement('div', { style: { width: 68, height: 68, padding: 3, background: '#1a1610', display: 'grid', placeItems: 'center', clipPath: 'polygon(0 6px,3px 6px,3px 3px,6px 3px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 3px,calc(100% - 3px) 3px,calc(100% - 3px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 3px) calc(100% - 6px),calc(100% - 3px) calc(100% - 3px),calc(100% - 6px) calc(100% - 3px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 3px),3px calc(100% - 3px),3px calc(100% - 6px),0 calc(100% - 6px))' } },
-                  React.createElement('div', { style: { background: '#f4ead0', width: '100%', height: '100%', display: 'grid', placeItems: 'center', clipPath: 'polygon(0 6px,3px 6px,3px 3px,6px 3px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 3px,calc(100% - 3px) 3px,calc(100% - 3px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 3px) calc(100% - 6px),calc(100% - 3px) calc(100% - 3px),calc(100% - 6px) calc(100% - 3px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 3px),3px calc(100% - 3px),3px calc(100% - 6px),0 calc(100% - 6px))' } },
-                    React.createElement(CUSTOM_CAT_ICONS[newCatIconIdx].Icon, { size: 48 })
-                  )
-                ),
-                React.createElement('div', {
-                  style: { width: 32, height: 32, display: 'grid', placeItems: 'center', cursor: 'pointer', fontFamily: "'Press Start 2P', monospace", fontSize: 13, color: '#1a1610', userSelect: 'none', flexShrink: 0 },
-                  onClick: () => setNewCatIconIdx(i => (i + 1) % CUSTOM_CAT_ICONS.length),
-                }, '▶'),
-              ),
-              React.createElement('div', { style: { display: 'flex', gap: 5, marginTop: 2 } },
-                CUSTOM_CAT_ICONS.map((_, i) => React.createElement('div', {
-                  key: i,
-                  style: { width: i === newCatIconIdx ? 8 : 5, height: i === newCatIconIdx ? 8 : 5, background: i === newCatIconIdx ? '#1a1610' : '#c8b88a', transition: 'all 0.15s' },
-                }))
+                }),
+                React.createElement('div', { style: { flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 } },
+                  React.createElement('div', {
+                    onClick: () => setNewCatIconIdx(i => (i - 1 + CUSTOM_CAT_ICONS.length) % CUSTOM_CAT_ICONS.length),
+                    style: { cursor: 'pointer', fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: '#1a1610', userSelect: 'none' },
+                  }, '◀'),
+                  React.createElement('div', { style: { width: 28, height: 28, display: 'grid', placeItems: 'center' } },
+                    React.createElement(CUSTOM_CAT_ICONS[newCatIconIdx].Icon, { size: 22 })
+                  ),
+                  React.createElement('div', {
+                    onClick: () => setNewCatIconIdx(i => (i + 1) % CUSTOM_CAT_ICONS.length),
+                    style: { cursor: 'pointer', fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: '#1a1610', userSelect: 'none' },
+                  }, '▶'),
+                )
               )
             ),
 
