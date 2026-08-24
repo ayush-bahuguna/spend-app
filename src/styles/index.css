@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --font-mono-receipt: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --color-paper: #f2ede1;
+  --color-paper-alt: #e9e2d2;
+  --color-ink: #1c1a17;
+  --color-ink-muted: #55524a;
+}
+
+@utility shadow-pixel {
+  box-shadow: 4px 4px 0 0 var(--color-ink);
+}
+
+@utility shadow-pixel-sm {
+  box-shadow: 2px 2px 0 0 var(--color-ink);
+}
+
+@utility shadow-pixel-pressed {
+  box-shadow: 1px 1px 0 0 var(--color-ink);
+}
+
+@utility divider-dashed {
+  height: 2px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-ink) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility divider-dashed-thin {
+  height: 1px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-ink-muted) 0 4px,
+    transparent 4px 9px
+  );
+}
+
+@layer base {
+  body {
+    background-color: var(--color-paper-alt);
+    color: var(--color-ink);
+    font-family: var(--font-mono-receipt);
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+/* Paper grain overlay — applied via .receipt-grain::before on a `position: relative` container. */
+.receipt-grain {
+  position: relative;
+  isolation: isolate;
+}
+
+.receipt-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}

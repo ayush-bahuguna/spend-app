@@ -1,0 +1,139 @@
+import { useEffect, useRef, useState } from "react";
+import { Divider } from "@/components/primitives/Divider";
+import { ColumnHeaderRow } from "@/components/receipt/ColumnHeaderRow";
+import { ExpenseListItem } from "@/components/receipt/ExpenseListItem";
+import { MonthlyReceiptHeader } from "@/components/receipt/MonthlyReceiptHeader";
+import { NetBalanceRow } from "@/components/receipt/NetBalanceRow";
+import { SettlementRow } from "@/components/receipt/SettlementRow";
+import { TotalsRow } from "@/components/receipt/TotalsRow";
+import { computeMonthSummary, isSplitExpense, personName } from "@/data/selectors";
+import type { Expense, Person } from "@/data/types";
+import { formatCurrency, formatMonthLabel } from "@/lib/format";
+import { getReceiptTagline } from "@/lib/taglines";
+
+interface MonthlyReceiptScreenProps {
+  monthKey: string;
+  expenses: Expense[];
+  people: Person[];
+  currentUserId: string;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  prevDisabled: boolean;
+  nextDisabled: boolean;
+}
+
+export function MonthlyReceiptScreen({
+  monthKey,
+  expenses,
+  people,
+  currentUserId,
+  onPrevMonth,
+  onNextMonth,
+  prevDisabled,
+  nextDisabled,
+}: MonthlyReceiptScreenProps) {
+  const summary = computeMonthSummary(expenses, currentUserId, monthKey, formatMonthLabel(monthKey));
+  const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fadeHeaderRef = useRef<HTMLDivElement>(null);
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    const headerEl = fadeHeaderRef.current;
+    if (!scrollEl || !headerEl) return;
+
+    const FADE_DISTANCE = 90;
+
+    function handleScroll() {
+      const progress = Math.min(scrollEl!.scrollTop / FADE_DISTANCE, 1);
+      headerEl!.style.opacity = String(1 - progress);
+    }
+
+    handleScroll();
+    scrollEl.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollEl.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
+      <div ref={fadeHeaderRef} className="px-5 pt-6">
+        <MonthlyReceiptHeader
+          monthLabel={summary.label}
+          onPrevMonth={onPrevMonth}
+          onNextMonth={onNextMonth}
+          prevDisabled={prevDisabled}
+          nextDisabled={nextDisabled}
+        />
+        <p className="my-8 text-center text-xs uppercase tracking-wide text-ink-muted">
+          {getReceiptTagline()}
+        </p>
+      </div>
+
+      <div className="sticky top-0 z-10 bg-paper px-5 pt-3">
+        <ColumnHeaderRow />
+        <Divider weight="thin" className="mb-1" />
+      </div>
+
+      <div className="px-5 pb-56">
+        {sorted.length === 0 && (
+          <p className="py-4 text-center text-xs uppercase tracking-wide text-ink-muted">
+            No expenses recorded
+          </p>
+        )}
+        {sorted.map((expense) => (
+          <ExpenseListItem
+            key={expense.id}
+            expense={expense}
+            people={people}
+            isSplit={isSplitExpense(expense)}
+            expanded={expandedIds.has(expense.id)}
+            onToggle={() => toggleExpanded(expense.id)}
+          />
+        ))}
+
+        <Divider className="my-2" />
+        <TotalsRow label="Total Expenses" amount={formatCurrency(summary.totalExpenses)} />
+
+        <Divider className="my-2" />
+        <TotalsRow label="You Paid" amount={formatCurrency(summary.youPaid)} bold={false} indent />
+        <TotalsRow
+          label="Others Paid"
+          amount={formatCurrency(summary.othersPaid)}
+          bold={false}
+          indent
+        />
+
+        {summary.settlements.length > 0 && (
+          <>
+            <Divider className="my-2" />
+            <p className="py-1 text-sm font-bold uppercase tracking-wide">Settlements</p>
+            {summary.settlements.map((s) => (
+              <SettlementRow
+                key={s.personId}
+                name={personName(people, s.personId)}
+                amount={formatCurrency(s.amount)}
+                indent
+              />
+            ))}
+          </>
+        )}
+
+        <Divider className="my-2" />
+        <NetBalanceRow amount={formatCurrency(summary.netBalance)} />
+      </div>
+    </div>
+  );
+}
