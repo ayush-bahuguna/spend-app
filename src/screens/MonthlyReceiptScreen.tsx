@@ -9,7 +9,7 @@ import { SettlementRow } from "@/components/receipt/SettlementRow";
 import { TotalsRow } from "@/components/receipt/TotalsRow";
 import { computeMonthSummary, isSplitExpense, personName } from "@/data/selectors";
 import type { Expense, Person } from "@/data/types";
-import { useLongPress } from "@/hooks/useLongPress";
+import { useTripleTap } from "@/hooks/useTripleTap";
 import { fetchAnimeMoneyGif } from "@/lib/giphy";
 import { formatCurrency, formatMonthLabel } from "@/lib/format";
 import { getReceiptTagline } from "@/lib/taglines";
@@ -41,20 +41,12 @@ export function MonthlyReceiptScreen({
   const [gifUrl, setGifUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fadeHeaderRef = useRef<HTMLDivElement>(null);
-  const pendingGifRef = useRef<Promise<string | null> | null>(null);
-
-  const taglinePress = useLongPress({
-    delay: 5000,
-    onStart: () => {
-      pendingGifRef.current = fetchAnimeMoneyGif();
-    },
-    onLongPress: async () => {
-      const url = await (pendingGifRef.current ?? fetchAnimeMoneyGif());
-      if (url) {
-        navigator.vibrate?.(200);
-        setGifUrl(url);
-      }
-    },
+  const taglineTaps = useTripleTap(async () => {
+    const url = await fetchAnimeMoneyGif();
+    if (url) {
+      navigator.vibrate?.(200);
+      setGifUrl(url);
+    }
   });
 
   function toggleExpanded(id: string) {
@@ -97,8 +89,8 @@ export function MonthlyReceiptScreen({
           nextDisabled={nextDisabled}
         />
         <p
-          {...taglinePress}
-          className="my-8 touch-none select-none text-center text-xs uppercase tracking-wide text-ink-muted [-webkit-touch-callout:none]"
+          {...taglineTaps}
+          className="my-8 select-none text-center text-xs uppercase tracking-wide text-ink-muted"
         >
           {getReceiptTagline()}
         </p>
