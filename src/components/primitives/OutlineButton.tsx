@@ -2,13 +2,15 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 interface OutlineButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
+  rounded?: boolean;
 }
 
-export function OutlineButton({ children, className = "", ...props }: OutlineButtonProps) {
+export function OutlineButton({ children, className = "", rounded = false, ...props }: OutlineButtonProps) {
   return (
     <button
       className={[
         "inline-flex w-full items-center justify-center gap-2",
+        rounded ? "rounded-xl" : "",
         "border-2 border-ink bg-transparent px-5 py-3",
         "font-mono-receipt text-sm font-bold uppercase tracking-wide text-ink",
         "hover:bg-ink hover:text-paper",

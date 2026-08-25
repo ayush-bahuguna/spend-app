@@ -1,4 +1,5 @@
 import { ExpenseRow } from "@/components/receipt/ExpenseRow";
+import { NoteSection } from "@/components/receipt/NoteSection";
 import { SplitDetailDivider } from "@/components/receipt/SplitDetailDivider";
 import { SplitDetailHeaderRow } from "@/components/receipt/SplitDetailHeaderRow";
 import { SplitDetailRow } from "@/components/receipt/SplitDetailRow";
@@ -24,19 +25,24 @@ export function ExpenseListItem({ expense, people, isSplit, expanded, onToggle }
         amount={formatCurrency(expense.amount)}
         split={isSplit}
         active={expanded}
-        onClick={isSplit ? onToggle : undefined}
+        onClick={onToggle}
       />
-      {isSplit && expanded && (
-        <div className="mb-2 bg-paper-alt/40 py-1">
-          <SplitDetailDivider />
-          <SplitDetailHeaderRow />
-          {expense.splits.map((s) => (
-            <SplitDetailRow
-              key={s.personId}
-              name={personName(people, s.personId)}
-              amount={formatCurrency(s.amount)}
-            />
-          ))}
+      {expanded && (
+        <div className="mb-2 flex flex-col gap-2 bg-paper-alt/40 pt-2 pb-1">
+          <NoteSection note={expense.item} />
+          {isSplit && (
+            <div className="flex flex-col">
+              <SplitDetailDivider />
+              <SplitDetailHeaderRow />
+              {expense.splits.map((s) => (
+                <SplitDetailRow
+                  key={s.personId}
+                  name={personName(people, s.personId)}
+                  amount={formatCurrency(s.amount)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

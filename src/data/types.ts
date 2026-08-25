@@ -3,6 +3,7 @@ export type PersonId = string;
 export interface Person {
   id: PersonId;
   name: string;
+  email?: string;
 }
 
 export interface Category {
@@ -10,7 +11,7 @@ export interface Category {
   name: string;
 }
 
-export type SplitType = "equal" | "custom" | "none";
+export type SplitType = "equal" | "none" | "percentage" | "value";
 
 export interface ExpenseSplit {
   personId: PersonId;

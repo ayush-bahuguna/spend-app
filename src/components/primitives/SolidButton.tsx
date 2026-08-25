@@ -16,19 +16,13 @@ export function SolidButton({
   return (
     <button
       className={[
-        "inline-flex items-center justify-center gap-2",
+        "inline-flex items-center justify-center gap-2 border-0",
         fullWidth ? "w-full" : "w-auto",
+        rounded ? "rounded-xl" : "rounded-none",
         "bg-ink px-5 py-3.5",
         "font-mono-receipt text-sm font-bold uppercase tracking-wide text-paper",
-        "hover:bg-ink/85",
+        "hover:bg-ink/85 active:scale-[0.97]",
         "disabled:cursor-not-allowed disabled:opacity-40",
-        rounded
-          ? "rounded-xl border-0 active:scale-[0.97]"
-          : [
-              "border-2 border-ink shadow-pixel-sm",
-              "active:translate-x-[2px] active:translate-y-[2px] active:shadow-pixel-pressed",
-              "disabled:shadow-none disabled:active:translate-x-0 disabled:active:translate-y-0",
-            ].join(" "),
         className,
       ].join(" ")}
       {...props}

@@ -1,18 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useAuth } from "@/auth/AuthProvider";
+import { ActionBar } from "@/components/primitives/ActionBar";
 import { BottomNav, type NavSection } from "@/components/primitives/BottomNav";
 import { ReceiptPaper } from "@/components/primitives/ReceiptPaper";
+import { SolidButton } from "@/components/primitives/SolidButton";
 import { AddItemFab } from "@/components/receipt/AddItemFab";
-import { computeMonthSummary } from "@/data/selectors";
-import {
-  CURRENT_USER_ID,
-  archiveEntries,
-  availableMonthKeys,
-  categories as initialCategories,
-  expensesByMonth as initialExpensesByMonth,
-  people,
-} from "@/data/mockData";
-import type { Category, Expense } from "@/data/types";
-import { AddItemScreen } from "@/screens/AddItemScreen";
+import * as categoriesApi from "@/data/api/categories";
+import * as expensesApi from "@/data/api/expenses";
+import type { Scope } from "@/data/api/expenses";
+import * as groupsApi from "@/data/api/groups";
+import type { Group } from "@/data/api/groups";
+import type { ArchiveEntry, Category, Expense, Person } from "@/data/types";
+import { AddItemScreen, type AddItemScreenHandle } from "@/screens/AddItemScreen";
+import { GroupsScreen } from "@/screens/GroupsScreen";
+import { LoginScreen } from "@/screens/LoginScreen";
 import { MeScreen } from "@/screens/MeScreen";
 import { MonthArchiveScreen } from "@/screens/MonthArchiveScreen";
 import { MonthlyReceiptScreen } from "@/screens/MonthlyReceiptScreen";
@@ -20,104 +21,246 @@ import { SettingsScreen } from "@/screens/SettingsScreen";
 
 type Screen = NavSection | "add-item";
 
-export default function App() {
-  const [screen, setScreen] = useState<Screen>("expenses");
-  const [monthKey, setMonthKey] = useState("2026-08");
-  const [expensesByMonth, setExpensesByMonth] = useState(initialExpensesByMonth);
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+function currentMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
-  const monthIndex = availableMonthKeys.indexOf(monthKey);
-  const expenses = expensesByMonth[monthKey] ?? [];
-  const currentUser = people.find((p) => p.id === CURRENT_USER_ID)!;
+function shiftMonthKey(key: string, delta: number): string {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
-  const archiveWithCurrent = useMemo(() => {
-    const currentTotal = computeMonthSummary(expenses, CURRENT_USER_ID, monthKey, "").totalExpenses;
-    return [...archiveEntries, { monthKey: "2026-08", shortLabel: "AUG 2026", total: currentTotal }];
-  }, [expenses, monthKey]);
+function scopeCacheKey(scope: Scope): string {
+  return scope.type === "personal" ? "personal" : `group:${scope.groupId}`;
+}
 
-  function goToMonth(index: number) {
-    const key = availableMonthKeys[index];
-    if (key) setMonthKey(key);
-  }
-
-  function addExpense(expense: Expense) {
-    setExpensesByMonth((prev) => ({
-      ...prev,
-      [monthKey]: [...(prev[monthKey] ?? []), expense],
-    }));
-    setScreen("expenses");
-  }
-
-  const showBottomNav = screen !== "add-item";
-
+function AppFrame({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-dvh justify-center bg-paper-alt">
       <div className="relative flex h-full w-full max-w-[23.75rem] flex-col sm:max-w-[26.875rem]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const { session, currentUser, signOut } = useAuth();
+
+  const [screen, setScreen] = useState<Screen>("expenses");
+  const [scope, setScope] = useState<Scope>({ type: "personal" });
+  const [monthKey, setMonthKey] = useState(currentMonthKey);
+  const [expensesCache, setExpensesCache] = useState<Record<string, Expense[]>>({});
+  const [archiveCache, setArchiveCache] = useState<Record<string, ArchiveEntry[]>>({});
+  const [groupMembersCache, setGroupMembersCache] = useState<Record<string, Person[]>>({});
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const addItemRef = useRef<AddItemScreenHandle>(null);
+
+  const expensesKey = `${scopeCacheKey(scope)}:${monthKey}`;
+  const archiveKey = scopeCacheKey(scope);
+  const expenses = expensesCache[expensesKey];
+  const archiveEntries = archiveCache[archiveKey] ?? [];
+  const people: Person[] =
+    scope.type === "personal" ? (currentUser ? [currentUser] : []) : (groupMembersCache[scope.groupId] ?? []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    categoriesApi.fetchCategories().then(setCategories).catch(() => {});
+    groupsApi.fetchGroups().then(setGroups).catch(() => {});
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (scope.type !== "group" || groupMembersCache[scope.groupId]) return;
+    const { groupId } = scope;
+    groupsApi
+      .fetchGroupMembers(groupId)
+      .then((members) => setGroupMembersCache((prev) => ({ ...prev, [groupId]: members })))
+      .catch(() => {});
+  }, [scope, groupMembersCache]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (scope.type === "group" && !groupMembersCache[scope.groupId]) return;
+    if (expensesCache[expensesKey]) return;
+    expensesApi
+      .fetchExpensesForMonth(scope, monthKey)
+      .then((data) => setExpensesCache((prev) => ({ ...prev, [expensesKey]: data })))
+      .catch(() => {});
+  }, [currentUser, scope, monthKey, groupMembersCache, expensesCache, expensesKey]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (scope.type === "group" && !groupMembersCache[scope.groupId]) return;
+    expensesApi
+      .fetchMonthlyTotals(scope)
+      .then((entries) => setArchiveCache((prev) => ({ ...prev, [archiveKey]: entries })))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, scope, groupMembersCache]);
+
+  function goToMonth(delta: number) {
+    setMonthKey((prev) => shiftMonthKey(prev, delta));
+  }
+
+  async function addExpense(expense: Expense) {
+    await expensesApi.addExpense(scope, expense);
+    setExpensesCache((prev) => ({ ...prev, [expensesKey]: [...(prev[expensesKey] ?? []), expense] }));
+    expensesApi
+      .fetchMonthlyTotals(scope)
+      .then((entries) => setArchiveCache((prev) => ({ ...prev, [archiveKey]: entries })))
+      .catch(() => {});
+    setScreen("expenses");
+  }
+
+  async function handleAddCategory(name: string) {
+    const created = await categoriesApi.addCategory(name);
+    setCategories((prev) => [...prev, created]);
+  }
+
+  function handleRenameCategory(id: string, name: string) {
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
+    categoriesApi.renameCategory(id, name).catch(() => {});
+  }
+
+  function handleDeleteCategory(id: string) {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    categoriesApi.deleteCategory(id).catch(() => {});
+  }
+
+  async function handleCreateGroup(name: string) {
+    if (!currentUser) return;
+    const group = await groupsApi.createGroup(name, currentUser.name);
+    if (group) setGroups((prev) => [...prev, group]);
+  }
+
+  async function handleJoinGroup(code: string): Promise<{ ok: boolean; error?: string }> {
+    if (!currentUser) return { ok: false, error: "NOT SIGNED IN" };
+    try {
+      const group = await groupsApi.joinGroupByCode(code, currentUser.name);
+      if (!group) return { ok: false, error: "INVALID CODE" };
+      setGroups((prev) => (prev.some((g) => g.id === group.id) ? prev : [...prev, group]));
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "SOMETHING WENT WRONG" };
+    }
+  }
+
+  function handleLeaveGroup(groupId: string) {
+    groupsApi.leaveGroup(groupId).catch(() => {});
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    if (scope.type === "group" && scope.groupId === groupId) {
+      setScope({ type: "personal" });
+      setMonthKey(currentMonthKey());
+    }
+  }
+
+  function handleSelectGroup(group: Group) {
+    setScope({ type: "group", groupId: group.id, groupName: group.name });
+    setMonthKey(currentMonthKey());
+    setScreen("expenses");
+  }
+
+  if (session === undefined) {
+    return (
+      <AppFrame>
         <ReceiptPaper>
-          {screen === "expenses" && (
+          <p className="m-auto text-xs uppercase tracking-wide text-ink-muted">Loading…</p>
+        </ReceiptPaper>
+      </AppFrame>
+    );
+  }
+
+  if (!session || !currentUser) {
+    return (
+      <AppFrame>
+        <LoginScreen />
+      </AppFrame>
+    );
+  }
+
+  return (
+    <AppFrame>
+      <ReceiptPaper>
+        {screen === "expenses" &&
+          (expenses ? (
             <MonthlyReceiptScreen
               monthKey={monthKey}
               expenses={expenses}
               people={people}
-              currentUserId={CURRENT_USER_ID}
-              onPrevMonth={() => goToMonth(monthIndex - 1)}
-              onNextMonth={() => goToMonth(monthIndex + 1)}
-              prevDisabled={monthIndex <= 0}
-              nextDisabled={monthIndex >= availableMonthKeys.length - 1}
+              currentUserId={currentUser.id}
+              onPrevMonth={() => goToMonth(-1)}
+              onNextMonth={() => goToMonth(1)}
+              prevDisabled={false}
+              nextDisabled={monthKey >= currentMonthKey()}
             />
-          )}
-
-          {screen === "add-item" && (
-            <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-              <AddItemScreen
-                people={people}
-                currentUserId={CURRENT_USER_ID}
-                onClose={() => setScreen("expenses")}
-                onAdd={addExpense}
-              />
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-xs uppercase tracking-wide text-ink-muted">Loading…</p>
             </div>
-          )}
+          ))}
 
-          {screen === "history" && (
-            <MonthArchiveScreen
-              entries={archiveWithCurrent}
-              currentMonthKey={monthKey}
-              onSelectMonth={(key) => {
-                setMonthKey(key);
-                setScreen("expenses");
-              }}
-            />
-          )}
+        {screen === "add-item" && (
+          <AddItemScreen
+            ref={addItemRef}
+            people={people}
+            categories={categories}
+            currentUserId={currentUser.id}
+            onClose={() => setScreen("expenses")}
+            onAdd={addExpense}
+          />
+        )}
 
-          {screen === "settings" && (
-            <SettingsScreen
-              categories={categories}
-              onAddCategory={(name) =>
-                setCategories((prev) => [...prev, { id: `c${Date.now()}`, name }])
-              }
-              onRenameCategory={(id, name) =>
-                setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)))
-              }
-              onDeleteCategory={(id) => setCategories((prev) => prev.filter((c) => c.id !== id))}
-            />
-          )}
+        {screen === "history" && (
+          <MonthArchiveScreen
+            entries={archiveEntries}
+            currentMonthKey={monthKey}
+            onSelectMonth={(key) => {
+              setMonthKey(key);
+              setScreen("expenses");
+            }}
+          />
+        )}
 
-          {screen === "me" && (
-            <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 pt-6 pb-24">
-              <MeScreen currentUser={currentUser} people={people} />
-            </div>
-          )}
-        </ReceiptPaper>
-      </div>
+        {screen === "groups" && (
+          <GroupsScreen
+            groups={groups}
+            onSelectGroup={handleSelectGroup}
+            onCreateGroup={handleCreateGroup}
+            onJoinGroup={handleJoinGroup}
+            onLeaveGroup={handleLeaveGroup}
+          />
+        )}
+
+        {screen === "settings" && (
+          <SettingsScreen
+            categories={categories}
+            onAddCategory={handleAddCategory}
+            onRenameCategory={handleRenameCategory}
+            onDeleteCategory={handleDeleteCategory}
+          />
+        )}
+
+        {screen === "me" && (
+          <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 pt-6 pb-24">
+            <MeScreen currentUser={currentUser} onLogout={signOut} />
+          </div>
+        )}
+      </ReceiptPaper>
 
       <div className="fixed inset-x-0 bottom-0 z-20 flex justify-center">
         <div className="w-full max-w-[23.75rem] sm:max-w-[26.875rem]">
           {screen === "expenses" && <AddItemFab onClick={() => setScreen("add-item")} />}
-          {showBottomNav && (
-            <BottomNav active={screen as NavSection} onChange={(section) => setScreen(section)} />
+          {screen === "add-item" && (
+            <ActionBar>
+              <SolidButton onClick={() => addItemRef.current?.submit()}>+ Add To Receipt</SolidButton>
+            </ActionBar>
           )}
+          <BottomNav active={screen as NavSection} onChange={(section) => setScreen(section)} />
         </div>
       </div>
-    </div>
+    </AppFrame>
   );
 }

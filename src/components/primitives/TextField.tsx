@@ -6,6 +6,7 @@ interface TextFieldProps {
   prefix?: string;
   error?: string;
   type?: string;
+  inputMode?: "text" | "numeric" | "decimal" | "tel" | "search" | "email" | "url" | "none";
   className?: string;
 }
 
@@ -17,6 +18,7 @@ export function TextField({
   prefix,
   error,
   type = "text",
+  inputMode,
   className = "",
 }: TextFieldProps) {
   return (
@@ -39,6 +41,7 @@ export function TextField({
         {prefix && <span className="font-bold text-ink">{prefix}</span>}
         <input
           type={type}
+          inputMode={inputMode}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
