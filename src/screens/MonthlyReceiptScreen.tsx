@@ -9,7 +9,7 @@ import { SettlementRow } from "@/components/receipt/SettlementRow";
 import { TotalsRow } from "@/components/receipt/TotalsRow";
 import { computeMonthSummary, isSplitExpense, personName } from "@/data/selectors";
 import type { Expense, Person } from "@/data/types";
-import { useTripleTap } from "@/hooks/useTripleTap";
+import { useHoldToTrigger } from "@/hooks/useHoldToTrigger";
 import { fetchAnimeMoneyGif } from "@/lib/giphy";
 import { formatCurrency, formatMonthLabel } from "@/lib/format";
 import { getReceiptTagline } from "@/lib/taglines";
@@ -41,12 +41,42 @@ export function MonthlyReceiptScreen({
   const [gifUrl, setGifUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fadeHeaderRef = useRef<HTMLDivElement>(null);
-  const taglineTaps = useTripleTap(async () => {
-    const url = await fetchAnimeMoneyGif();
-    if (url) {
-      navigator.vibrate?.(200);
-      setGifUrl(url);
-    }
+  const taglineRef = useRef<HTMLParagraphElement>(null);
+  const pendingGifRef = useRef<Promise<string | null> | null>(null);
+
+  const holdProps = useHoldToTrigger({
+    duration: 5000,
+    onStart: () => {
+      pendingGifRef.current = fetchAnimeMoneyGif();
+    },
+    onProgress: (progress) => {
+      const el = taglineRef.current;
+      if (!el) return;
+      if (progress <= 0) {
+        el.style.transform = "";
+        return;
+      }
+      // Accelerating shake: amplitude and oscillation speed both ramp up
+      // with progress, so it reads as "still -> jittering -> vibrating",
+      // like the Android home-screen icon-jiggle easter egg.
+      const eased = progress * progress;
+      const amplitude = 6 * eased;
+      const frequencyHz = 6 + 34 * eased;
+      const elapsedSeconds = progress * 5;
+      const angle = elapsedSeconds * frequencyHz * 2 * Math.PI;
+      const dx = Math.sin(angle) * amplitude;
+      const dy = Math.cos(angle * 1.3) * amplitude * 0.4;
+      const rotate = Math.sin(angle * 0.7) * 6 * eased;
+      el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rotate}deg)`;
+    },
+    onComplete: async () => {
+      if (taglineRef.current) taglineRef.current.style.transform = "";
+      const url = await (pendingGifRef.current ?? fetchAnimeMoneyGif());
+      if (url) {
+        navigator.vibrate?.(200);
+        setGifUrl(url);
+      }
+    },
   });
 
   function toggleExpanded(id: string) {
@@ -89,8 +119,9 @@ export function MonthlyReceiptScreen({
           nextDisabled={nextDisabled}
         />
         <p
-          {...taglineTaps}
-          className="my-8 select-none text-center text-xs uppercase tracking-wide text-ink-muted"
+          ref={taglineRef}
+          {...holdProps}
+          className="my-8 touch-none select-none text-center text-xs uppercase tracking-wide text-ink-muted [-webkit-touch-callout:none]"
         >
           {getReceiptTagline()}
         </p>
