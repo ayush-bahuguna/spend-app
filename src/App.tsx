@@ -72,34 +72,40 @@ export default function App() {
     groupsApi.fetchGroups().then(setGroups).catch(() => {});
   }, [currentUser?.id]);
 
+  // Refetch group members every time we enter that group's scope (not just once) —
+  // so a newly-joined member becomes visible without needing a full reload.
   useEffect(() => {
-    if (scope.type !== "group" || groupMembersCache[scope.groupId]) return;
+    if (scope.type !== "group") return;
     const { groupId } = scope;
     groupsApi
       .fetchGroupMembers(groupId)
       .then((members) => setGroupMembersCache((prev) => ({ ...prev, [groupId]: members })))
       .catch(() => {});
-  }, [scope, groupMembersCache]);
+  }, [scope]);
 
+  // Refetch expenses every time the Expenses screen becomes active (or scope/month
+  // changes), not just once — so a groupmate's newly-added expense shows up on
+  // revisit instead of being stuck behind a stale in-memory cache.
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || screen !== "expenses") return;
     if (scope.type === "group" && !groupMembersCache[scope.groupId]) return;
-    if (expensesCache[expensesKey]) return;
     expensesApi
       .fetchExpensesForMonth(scope, monthKey)
       .then((data) => setExpensesCache((prev) => ({ ...prev, [expensesKey]: data })))
       .catch(() => {});
-  }, [currentUser, scope, monthKey, groupMembersCache, expensesCache, expensesKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, scope, monthKey, groupMembersCache, screen]);
 
+  // Same idea for History — refetch every time it becomes active.
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || screen !== "history") return;
     if (scope.type === "group" && !groupMembersCache[scope.groupId]) return;
     expensesApi
       .fetchMonthlyTotals(scope)
       .then((entries) => setArchiveCache((prev) => ({ ...prev, [archiveKey]: entries })))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, scope, groupMembersCache]);
+  }, [currentUser, scope, groupMembersCache, screen]);
 
   function goToMonth(delta: number) {
     setMonthKey((prev) => shiftMonthKey(prev, delta));
@@ -108,10 +114,6 @@ export default function App() {
   async function addExpense(expense: Expense) {
     await expensesApi.addExpense(scope, expense);
     setExpensesCache((prev) => ({ ...prev, [expensesKey]: [...(prev[expensesKey] ?? []), expense] }));
-    expensesApi
-      .fetchMonthlyTotals(scope)
-      .then((entries) => setArchiveCache((prev) => ({ ...prev, [archiveKey]: entries })))
-      .catch(() => {});
     setScreen("expenses");
   }
 
