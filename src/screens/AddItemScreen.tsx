@@ -241,7 +241,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
           )}
         </div>
 
-        <Divider className="my-4" />
+        <Divider className="mt-12 mb-4" />
         <ExpenseRow
           date={isoDate ? formatDateShort(isoDate) : dateStr}
           item={item.trim() || "ITEM NAME"}
