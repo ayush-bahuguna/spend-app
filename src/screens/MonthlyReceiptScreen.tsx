@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Divider } from "@/components/primitives/Divider";
+import { GifModal } from "@/components/primitives/GifModal";
 import { ColumnHeaderRow } from "@/components/receipt/ColumnHeaderRow";
 import { ExpenseListItem } from "@/components/receipt/ExpenseListItem";
 import { MonthlyReceiptHeader } from "@/components/receipt/MonthlyReceiptHeader";
@@ -8,6 +9,8 @@ import { SettlementRow } from "@/components/receipt/SettlementRow";
 import { TotalsRow } from "@/components/receipt/TotalsRow";
 import { computeMonthSummary, isSplitExpense, personName } from "@/data/selectors";
 import type { Expense, Person } from "@/data/types";
+import { useLongPress } from "@/hooks/useLongPress";
+import { fetchAnimeMoneyGif } from "@/lib/giphy";
 import { formatCurrency, formatMonthLabel } from "@/lib/format";
 import { getReceiptTagline } from "@/lib/taglines";
 
@@ -35,8 +38,24 @@ export function MonthlyReceiptScreen({
   const summary = computeMonthSummary(expenses, currentUserId, monthKey, formatMonthLabel(monthKey));
   const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [gifUrl, setGifUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fadeHeaderRef = useRef<HTMLDivElement>(null);
+  const pendingGifRef = useRef<Promise<string | null> | null>(null);
+
+  const taglinePress = useLongPress({
+    delay: 5000,
+    onStart: () => {
+      pendingGifRef.current = fetchAnimeMoneyGif();
+    },
+    onLongPress: async () => {
+      const url = await (pendingGifRef.current ?? fetchAnimeMoneyGif());
+      if (url) {
+        navigator.vibrate?.(200);
+        setGifUrl(url);
+      }
+    },
+  });
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) => {
@@ -77,10 +96,15 @@ export function MonthlyReceiptScreen({
           prevDisabled={prevDisabled}
           nextDisabled={nextDisabled}
         />
-        <p className="my-8 text-center text-xs uppercase tracking-wide text-ink-muted">
+        <p
+          {...taglinePress}
+          className="my-8 select-none text-center text-xs uppercase tracking-wide text-ink-muted"
+        >
           {getReceiptTagline()}
         </p>
       </div>
+
+      {gifUrl && <GifModal gifUrl={gifUrl} onClose={() => setGifUrl(null)} />}
 
       <div className="sticky top-0 z-10 bg-paper px-5 pt-3">
         <ColumnHeaderRow />
