@@ -13,6 +13,7 @@ export function useTripleTap(onComplete: () => void, options?: UseTripleTapOptio
 
   function onClick() {
     countRef.current += 1;
+    console.log(`[tripleTap] tap ${countRef.current}/${requiredTaps}`);
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
 
     if (countRef.current >= requiredTaps) {
