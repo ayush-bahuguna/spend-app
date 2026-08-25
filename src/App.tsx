@@ -39,7 +39,7 @@ function scopeCacheKey(scope: Scope): string {
 function AppFrame({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-dvh justify-center bg-paper-alt">
-      <div className="relative flex h-full w-full max-w-[23.75rem] flex-col sm:max-w-[26.875rem]">
+      <div className="relative flex h-full w-full flex-col sm:max-w-[26.875rem]">
         {children}
       </div>
     </div>
@@ -253,7 +253,7 @@ export default function App() {
       </ReceiptPaper>
 
       <div className="fixed inset-x-0 bottom-0 z-20 flex justify-center">
-        <div className="w-full max-w-[23.75rem] sm:max-w-[26.875rem]">
+        <div className="w-full sm:max-w-[26.875rem]">
           {screen === "expenses" && <AddItemFab onClick={() => setScreen("add-item")} />}
           {screen === "add-item" && (
             <ActionBar>
