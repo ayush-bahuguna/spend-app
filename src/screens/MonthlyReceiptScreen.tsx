@@ -98,7 +98,7 @@ export function MonthlyReceiptScreen({
         />
         <p
           {...taglinePress}
-          className="my-8 select-none text-center text-xs uppercase tracking-wide text-ink-muted"
+          className="my-8 touch-none select-none text-center text-xs uppercase tracking-wide text-ink-muted [-webkit-touch-callout:none]"
         >
           {getReceiptTagline()}
         </p>
