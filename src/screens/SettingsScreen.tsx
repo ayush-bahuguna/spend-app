@@ -41,7 +41,7 @@ export function SettingsScreen({
         <Divider className="my-3" />
       </div>
 
-      <div className="px-5 pb-24">
+      <div className="px-5 pb-40">
         <p className="mt-8 mb-2 text-sm font-bold uppercase tracking-wide">Categories</p>
         <Divider weight="thin" className="mb-2" />
 
@@ -76,7 +76,7 @@ export function SettingsScreen({
             placeholder="New category"
             className="w-full border-b-2 border-ink bg-transparent px-1 py-2 font-mono-receipt text-base text-ink outline-none placeholder:text-ink-muted/60"
           />
-          <SolidButton onClick={handleAdd} rounded fullWidth={false} className="px-4 py-2.5 text-sm">
+          <SolidButton onClick={handleAdd} fullWidth={false} className="px-4 py-2.5 text-sm">
             +
           </SolidButton>
         </div>
