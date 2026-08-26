@@ -1,20 +1,19 @@
-import type { Scope } from "@/data/api/expenses";
 import { supabase } from "@/lib/supabaseClient";
 import type { Category } from "@/data/types";
 
-export async function fetchCategories(scope: Scope): Promise<Category[]> {
-  let query = supabase.from("categories").select("id, name").order("created_at", { ascending: true });
-  query = scope.type === "personal" ? query.is("group_id", null) : query.eq("group_id", scope.groupId);
-
-  const { data, error } = await query;
+export async function fetchCategories(): Promise<Category[]> {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, name")
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
 
-export async function addCategory(scope: Scope, name: string): Promise<Category> {
+export async function addCategory(name: string): Promise<Category> {
   const { data, error } = await supabase
     .from("categories")
-    .insert({ name, group_id: scope.type === "group" ? scope.groupId : null })
+    .insert({ name })
     .select("id, name")
     .single();
   if (error) throw error;

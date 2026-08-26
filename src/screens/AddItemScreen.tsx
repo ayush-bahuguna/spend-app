@@ -19,6 +19,7 @@ interface AddItemScreenProps {
   currentUserId: string;
   onClose: () => void;
   onAdd: (expense: Expense) => void;
+  onAddCategory: (name: string) => Promise<Category>;
 }
 
 export interface AddItemScreenHandle {
@@ -32,12 +33,15 @@ const SPLIT_OPTIONS = [
   { value: "value", label: "Partial Split - Value" },
 ];
 
+const NEW_CATEGORY_VALUE = "__new__";
+
 export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>(function AddItemScreen(
-  { people, categories, currentUserId, onClose, onAdd },
+  { people, categories, currentUserId, onClose, onAdd, onAddCategory },
   ref,
 ) {
   const [item, setItem] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [amountStr, setAmountStr] = useState("");
   const [paidBy, setPaidBy] = useState(currentUserId);
@@ -48,7 +52,14 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
   const [error, setError] = useState<string | undefined>();
   const categoryFieldRef = useRef<HTMLDivElement>(null);
 
+  const isNewCategory = categoryId === NEW_CATEGORY_VALUE;
   const categoryError = categoryTouched && !categoryId;
+  const newCategoryNameError = categoryTouched && isNewCategory && !newCategoryName.trim();
+
+  function handleCategoryChange(value: string) {
+    setCategoryId(value);
+    if (value !== NEW_CATEGORY_VALUE) setNewCategoryName("");
+  }
 
   const isSolo = people.length <= 1;
   const amount = Number(amountStr) || 0;
@@ -85,8 +96,8 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
     setParticipants((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
 
-  function handleSubmit() {
-    if (!categoryId) {
+  async function handleSubmit() {
+    if (!categoryId || (isNewCategory && !newCategoryName.trim())) {
       setCategoryTouched(true);
       categoryFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
@@ -97,13 +108,24 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
     }
     setError(undefined);
 
+    let resolvedCategoryId = categoryId;
+    if (isNewCategory) {
+      try {
+        const created = await onAddCategory(newCategoryName.trim().toUpperCase());
+        resolvedCategoryId = created.id;
+      } catch {
+        setError("COULDN'T CREATE CATEGORY, TRY AGAIN");
+        return;
+      }
+    }
+
     onAdd({
       id: `e${Date.now()}`,
       date: isoDate,
       item: item.trim().toUpperCase(),
       amount,
       paidBy,
-      categoryId: categoryId || undefined,
+      categoryId: resolvedCategoryId || undefined,
       splitType,
       splits: computedSplits,
     });
@@ -129,13 +151,24 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
             <SelectField
               label="Category"
               value={categoryId}
-              onChange={setCategoryId}
+              onChange={handleCategoryChange}
               options={[
                 { value: "", label: "Select category" },
                 ...categories.map((c) => ({ value: c.id, label: c.name })),
+                { value: NEW_CATEGORY_VALUE, label: "+ New Category" },
               ]}
               error={categoryError}
             />
+            {isNewCategory && (
+              <TextField
+                label="New Category Name"
+                value={newCategoryName}
+                onChange={setNewCategoryName}
+                placeholder="Groceries"
+                error={newCategoryNameError ? "ENTER A CATEGORY NAME" : undefined}
+                className="mt-4"
+              />
+            )}
           </div>
           <TextField
             label="What did you spend on?"
@@ -259,7 +292,11 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
         <Divider className="mt-12 mb-4" />
         <ExpenseRow
           date={isoDate ? formatDateShort(isoDate) : dateStr}
-          item={categories.find((c) => c.id === categoryId)?.name ?? "CATEGORY"}
+          item={
+            isNewCategory
+              ? newCategoryName.trim() || "NEW CATEGORY"
+              : (categories.find((c) => c.id === categoryId)?.name ?? "CATEGORY")
+          }
           paidBy={people.find((p) => p.id === paidBy)?.name ?? ""}
           amount={amount > 0 ? formatCurrency(amount) : "₹0"}
           split={isSplit}

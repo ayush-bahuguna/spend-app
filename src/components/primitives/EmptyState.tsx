@@ -8,7 +8,7 @@ interface EmptyStateProps {
 export function EmptyState({ message }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center gap-3 py-6">
-      <img src={DEATH_NOTE_GIF_URL} alt="" className="w-20 rounded-lg border-2 border-ink" />
+      <img src={DEATH_NOTE_GIF_URL} alt="" className="w-40 rounded-lg border-2 border-ink" />
       <p className="max-w-[14rem] text-center text-xs uppercase tracking-wide text-ink-muted">
         {message}
       </p>

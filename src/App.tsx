@@ -61,16 +61,14 @@ export default function App() {
   const [expensesCache, setExpensesCache] = useState<Record<string, Expense[]>>({});
   const [archiveCache, setArchiveCache] = useState<Record<string, ArchiveEntry[]>>({});
   const [groupMembersCache, setGroupMembersCache] = useState<Record<string, Person[]>>({});
-  const [categoriesCache, setCategoriesCache] = useState<Record<string, Category[]>>({});
+  const [categories, setCategories] = useState<Category[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const addItemRef = useRef<AddItemScreenHandle>(null);
 
   const expensesKey = `${scopeCacheKey(scope)}:${monthKey}`;
   const archiveKey = scopeCacheKey(scope);
-  const categoriesKey = scopeCacheKey(scope);
   const expenses = expensesCache[expensesKey];
   const archiveEntries = archiveCache[archiveKey] ?? [];
-  const categories = categoriesCache[categoriesKey] ?? [];
   const people: Person[] =
     scope.type === "personal" ? (currentUser ? [currentUser] : []) : (groupMembersCache[scope.groupId] ?? []);
   const scopeLabel = scope.type === "personal" ? "Personal" : scope.groupName;
@@ -82,20 +80,9 @@ export default function App() {
 
   useEffect(() => {
     if (!currentUser) return;
+    categoriesApi.fetchCategories().then(setCategories).catch(() => {});
     groupsApi.fetchGroups().then(setGroups).catch(() => {});
   }, [currentUser?.id]);
-
-  // Refetch categories every time scope changes — categories are shared per
-  // group (and separately, personal categories are private to each user), so
-  // the list depends on which scope is currently active.
-  useEffect(() => {
-    if (!currentUser) return;
-    categoriesApi
-      .fetchCategories(scope)
-      .then((data) => setCategoriesCache((prev) => ({ ...prev, [categoriesKey]: data })))
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, scope]);
 
   // Refetch group members every time we enter that group's scope (not just once) —
   // so a newly-joined member becomes visible without needing a full reload.
@@ -142,27 +129,19 @@ export default function App() {
     setScreen("expenses");
   }
 
-  async function handleAddCategory(name: string) {
-    const created = await categoriesApi.addCategory(scope, name);
-    setCategoriesCache((prev) => ({
-      ...prev,
-      [categoriesKey]: [...(prev[categoriesKey] ?? []), created],
-    }));
+  async function handleAddCategory(name: string): Promise<Category> {
+    const created = await categoriesApi.addCategory(name);
+    setCategories((prev) => [...prev, created]);
+    return created;
   }
 
   function handleRenameCategory(id: string, name: string) {
-    setCategoriesCache((prev) => ({
-      ...prev,
-      [categoriesKey]: (prev[categoriesKey] ?? []).map((c) => (c.id === id ? { ...c, name } : c)),
-    }));
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
     categoriesApi.renameCategory(id, name).catch(() => {});
   }
 
   function handleDeleteCategory(id: string) {
-    setCategoriesCache((prev) => ({
-      ...prev,
-      [categoriesKey]: (prev[categoriesKey] ?? []).filter((c) => c.id !== id),
-    }));
+    setCategories((prev) => prev.filter((c) => c.id !== id));
     categoriesApi.deleteCategory(id).catch(() => {});
   }
 
@@ -255,6 +234,7 @@ export default function App() {
             currentUserId={currentUser.id}
             onClose={() => setScreen("expenses")}
             onAdd={addExpense}
+            onAddCategory={handleAddCategory}
           />
         )}
 
@@ -289,10 +269,6 @@ export default function App() {
             onAddCategory={handleAddCategory}
             onRenameCategory={handleRenameCategory}
             onDeleteCategory={handleDeleteCategory}
-            scopeLabel={scopeLabel}
-            scopeOptions={scopeOptions}
-            selectedScopeKey={selectedScopeKey}
-            onSelectScope={handleSelectScope}
           />
         )}
 
