@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { Divider } from "@/components/primitives/Divider";
-import { ScopePickerModal } from "@/components/primitives/ScopePickerModal";
+import { ScopePill } from "@/components/primitives/ScopePill";
 import { TicketStub } from "@/components/receipt/TicketStub";
 import type { ArchiveEntry } from "@/data/types";
 import { formatCurrency } from "@/lib/format";
@@ -29,22 +28,18 @@ export function MonthArchiveScreen({
   selectedScopeKey,
   onSelectScope,
 }: MonthArchiveScreenProps) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-
   return (
     <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
       <div className="sticky top-0 z-10 bg-paper px-5 pt-6">
         <h2 className="text-center text-lg font-bold uppercase tracking-widest">History</h2>
         <Divider className="my-3" />
         <div className="flex justify-center pb-3">
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-ink px-4 py-1.5 font-mono-receipt text-xs font-bold uppercase tracking-wide text-paper"
-          >
-            {scopeLabel}
-            <span aria-hidden="true">▾</span>
-          </button>
+          <ScopePill
+            label={scopeLabel}
+            options={scopeOptions}
+            selectedKey={selectedScopeKey}
+            onSelect={onSelectScope}
+          />
         </div>
       </div>
 
@@ -59,18 +54,6 @@ export function MonthArchiveScreen({
           />
         ))}
       </div>
-
-      {pickerOpen && (
-        <ScopePickerModal
-          options={scopeOptions}
-          selectedKey={selectedScopeKey}
-          onSelect={(key) => {
-            onSelectScope(key);
-            setPickerOpen(false);
-          }}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
     </div>
   );
 }

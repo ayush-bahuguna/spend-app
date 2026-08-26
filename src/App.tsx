@@ -71,6 +71,12 @@ export default function App() {
   const archiveEntries = archiveCache[archiveKey] ?? [];
   const people: Person[] =
     scope.type === "personal" ? (currentUser ? [currentUser] : []) : (groupMembersCache[scope.groupId] ?? []);
+  const scopeLabel = scope.type === "personal" ? "Personal" : scope.groupName;
+  const scopeOptions = [
+    { key: "personal", label: "Personal" },
+    ...groups.map((g) => ({ key: g.id, label: g.name })),
+  ];
+  const selectedScopeKey = scope.type === "personal" ? "personal" : scope.groupId;
 
   useEffect(() => {
     if (!currentUser) return;
@@ -171,7 +177,7 @@ export default function App() {
     setScreen("expenses");
   }
 
-  function handleSelectHistoryScope(key: string) {
+  function handleSelectScope(key: string) {
     setScope(scopeFromKey(key, groups));
   }
 
@@ -208,6 +214,10 @@ export default function App() {
               onNextMonth={() => goToMonth(1)}
               prevDisabled={false}
               nextDisabled={monthKey >= currentMonthKey()}
+              scopeLabel={scopeLabel}
+              scopeOptions={scopeOptions}
+              selectedScopeKey={selectedScopeKey}
+              onSelectScope={handleSelectScope}
             />
           ) : (
             <div className="flex flex-1 items-center justify-center">
@@ -234,13 +244,10 @@ export default function App() {
               setMonthKey(key);
               setScreen("expenses");
             }}
-            scopeLabel={scope.type === "personal" ? "Personal" : scope.groupName}
-            scopeOptions={[
-              { key: "personal", label: "Personal" },
-              ...groups.map((g) => ({ key: g.id, label: g.name })),
-            ]}
-            selectedScopeKey={scope.type === "personal" ? "personal" : scope.groupId}
-            onSelectScope={handleSelectHistoryScope}
+            scopeLabel={scopeLabel}
+            scopeOptions={scopeOptions}
+            selectedScopeKey={selectedScopeKey}
+            onSelectScope={handleSelectScope}
           />
         )}
 

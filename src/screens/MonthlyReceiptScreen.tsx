@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Divider } from "@/components/primitives/Divider";
 import { GifModal } from "@/components/primitives/GifModal";
+import { ScopePill } from "@/components/primitives/ScopePill";
 import { ColumnHeaderRow } from "@/components/receipt/ColumnHeaderRow";
 import { ExpenseListItem } from "@/components/receipt/ExpenseListItem";
 import { MonthlyReceiptHeader } from "@/components/receipt/MonthlyReceiptHeader";
@@ -14,6 +15,11 @@ import { fetchAnimeMoneyGif } from "@/lib/giphy";
 import { formatCurrency, formatMonthLabel } from "@/lib/format";
 import { getReceiptTagline } from "@/lib/taglines";
 
+interface ScopeOption {
+  key: string;
+  label: string;
+}
+
 interface MonthlyReceiptScreenProps {
   monthKey: string;
   expenses: Expense[];
@@ -24,6 +30,10 @@ interface MonthlyReceiptScreenProps {
   onNextMonth: () => void;
   prevDisabled: boolean;
   nextDisabled: boolean;
+  scopeLabel: string;
+  scopeOptions: ScopeOption[];
+  selectedScopeKey: string;
+  onSelectScope: (key: string) => void;
 }
 
 export function MonthlyReceiptScreen({
@@ -36,6 +46,10 @@ export function MonthlyReceiptScreen({
   onNextMonth,
   prevDisabled,
   nextDisabled,
+  scopeLabel,
+  scopeOptions,
+  selectedScopeKey,
+  onSelectScope,
 }: MonthlyReceiptScreenProps) {
   const summary = computeMonthSummary(expenses, currentUserId, monthKey, formatMonthLabel(monthKey));
   const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
@@ -120,6 +134,14 @@ export function MonthlyReceiptScreen({
           prevDisabled={prevDisabled}
           nextDisabled={nextDisabled}
         />
+        <div className="flex justify-center pt-3">
+          <ScopePill
+            label={scopeLabel}
+            options={scopeOptions}
+            selectedKey={selectedScopeKey}
+            onSelect={onSelectScope}
+          />
+        </div>
         <p
           ref={taglineRef}
           {...holdProps}
