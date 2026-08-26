@@ -2,6 +2,7 @@ import { useState } from "react";
 import { TrashIcon } from "@/components/icons/TrashIcon";
 import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 import { Divider } from "@/components/primitives/Divider";
+import { EmptyState } from "@/components/primitives/EmptyState";
 import { IconButton } from "@/components/primitives/IconButton";
 import { SolidButton } from "@/components/primitives/SolidButton";
 import type { Group } from "@/data/api/groups";
@@ -61,9 +62,7 @@ export function GroupsScreen({
 
         <div className="flex flex-col">
           {groups.length === 0 && (
-            <p className="py-3 text-center text-xs uppercase tracking-wide text-ink-muted">
-              No groups yet
-            </p>
+            <EmptyState message="No groups yet. Misery loves company — and split bills." />
           )}
           {groups.map((group) => (
             <div key={group.id} className="flex items-center justify-between gap-2 py-2 text-sm">

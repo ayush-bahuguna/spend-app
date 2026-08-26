@@ -1,4 +1,5 @@
 import { Divider } from "@/components/primitives/Divider";
+import { EmptyState } from "@/components/primitives/EmptyState";
 import { ScopePill } from "@/components/primitives/ScopePill";
 import { TicketStub } from "@/components/receipt/TicketStub";
 import type { ArchiveEntry } from "@/data/types";
@@ -43,17 +44,23 @@ export function MonthArchiveScreen({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 px-5 pb-24">
-        {entries.map((entry) => (
-          <TicketStub
-            key={entry.monthKey}
-            label={entry.shortLabel}
-            amount={formatCurrency(entry.total)}
-            selected={entry.monthKey === currentMonthKey}
-            onClick={() => onSelectMonth(entry.monthKey)}
-          />
-        ))}
-      </div>
+      {entries.length === 0 ? (
+        <div className="px-5">
+          <EmptyState message="Nothing to show yet. Go spend something worth remembering." />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 px-5 pb-24">
+          {entries.map((entry) => (
+            <TicketStub
+              key={entry.monthKey}
+              label={entry.shortLabel}
+              amount={formatCurrency(entry.total)}
+              selected={entry.monthKey === currentMonthKey}
+              onClick={() => onSelectMonth(entry.monthKey)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

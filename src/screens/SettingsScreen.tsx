@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 import { Divider } from "@/components/primitives/Divider";
+import { EmptyState } from "@/components/primitives/EmptyState";
 import { IconButton } from "@/components/primitives/IconButton";
 import { ScopePill } from "@/components/primitives/ScopePill";
 import { SolidButton } from "@/components/primitives/SolidButton";
@@ -71,9 +72,7 @@ export function SettingsScreen({
 
         <div className="flex flex-col">
           {categories.length === 0 && (
-            <p className="py-3 text-center text-xs uppercase tracking-wide text-ink-muted">
-              No categories yet
-            </p>
+            <EmptyState message="No categories yet. Chaos is a valid filing system, but try again." />
           )}
           {categories.map((cat) => (
             <div key={cat.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Divider } from "@/components/primitives/Divider";
+import { EmptyState } from "@/components/primitives/EmptyState";
 import { GifModal } from "@/components/primitives/GifModal";
 import { ScopePill } from "@/components/primitives/ScopePill";
 import { ColumnHeaderRow } from "@/components/receipt/ColumnHeaderRow";
@@ -160,9 +161,7 @@ export function MonthlyReceiptScreen({
 
       <div className="px-5 pb-56">
         {sorted.length === 0 && (
-          <p className="py-4 text-center text-xs uppercase tracking-wide text-ink-muted">
-            No expenses recorded
-          </p>
+          <EmptyState message="This month's ledger is suspiciously clean. Fix that — add an expense." />
         )}
         {sorted.map((expense) => (
           <ExpenseListItem
