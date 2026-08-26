@@ -1,4 +1,4 @@
-import type { Expense, MonthSummary, Person, SettlementLine } from "@/data/types";
+import type { Category, Expense, MonthSummary, Person, SettlementLine } from "@/data/types";
 
 /**
  * Derives every totals/settlement figure shown on the receipt from the raw
@@ -51,6 +51,10 @@ export function computeMonthSummary(
 
 export function personName(people: Person[], id: string): string {
   return people.find((p) => p.id === id)?.name ?? id;
+}
+
+export function categoryName(categories: Category[], id?: string): string {
+  return categories.find((c) => c.id === id)?.name ?? "UNCATEGORIZED";
 }
 
 export function isSplitExpense(expense: Expense): boolean {

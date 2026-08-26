@@ -244,7 +244,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
         <Divider className="mt-12 mb-4" />
         <ExpenseRow
           date={isoDate ? formatDateShort(isoDate) : dateStr}
-          item={item.trim() || "ITEM NAME"}
+          item={categories.find((c) => c.id === categoryId)?.name ?? "CATEGORY"}
           paidBy={people.find((p) => p.id === paidBy)?.name ?? ""}
           amount={amount > 0 ? formatCurrency(amount) : "₹0"}
           split={isSplit}

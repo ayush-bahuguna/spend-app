@@ -3,24 +3,32 @@ import { NoteSection } from "@/components/receipt/NoteSection";
 import { SplitDetailDivider } from "@/components/receipt/SplitDetailDivider";
 import { SplitDetailHeaderRow } from "@/components/receipt/SplitDetailHeaderRow";
 import { SplitDetailRow } from "@/components/receipt/SplitDetailRow";
-import { personName } from "@/data/selectors";
-import type { Expense, Person } from "@/data/types";
+import { categoryName, personName } from "@/data/selectors";
+import type { Category, Expense, Person } from "@/data/types";
 import { formatCurrency, formatDateShort } from "@/lib/format";
 
 interface ExpenseListItemProps {
   expense: Expense;
   people: Person[];
+  categories: Category[];
   isSplit: boolean;
   expanded: boolean;
   onToggle: () => void;
 }
 
-export function ExpenseListItem({ expense, people, isSplit, expanded, onToggle }: ExpenseListItemProps) {
+export function ExpenseListItem({
+  expense,
+  people,
+  categories,
+  isSplit,
+  expanded,
+  onToggle,
+}: ExpenseListItemProps) {
   return (
     <div>
       <ExpenseRow
         date={formatDateShort(expense.date)}
-        item={expense.item}
+        item={categoryName(categories, expense.categoryId)}
         paidBy={personName(people, expense.paidBy)}
         amount={formatCurrency(expense.amount)}
         split={isSplit}

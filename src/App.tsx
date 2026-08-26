@@ -36,6 +36,12 @@ function scopeCacheKey(scope: Scope): string {
   return scope.type === "personal" ? "personal" : `group:${scope.groupId}`;
 }
 
+function scopeFromKey(key: string, groups: Group[]): Scope {
+  if (key === "personal") return { type: "personal" };
+  const group = groups.find((g) => g.id === key);
+  return group ? { type: "group", groupId: group.id, groupName: group.name } : { type: "personal" };
+}
+
 function AppFrame({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-dvh justify-center bg-paper-alt">
@@ -165,6 +171,10 @@ export default function App() {
     setScreen("expenses");
   }
 
+  function handleSelectHistoryScope(key: string) {
+    setScope(scopeFromKey(key, groups));
+  }
+
   if (session === undefined) {
     return (
       <AppFrame>
@@ -192,6 +202,7 @@ export default function App() {
               monthKey={monthKey}
               expenses={expenses}
               people={people}
+              categories={categories}
               currentUserId={currentUser.id}
               onPrevMonth={() => goToMonth(-1)}
               onNextMonth={() => goToMonth(1)}
@@ -223,6 +234,13 @@ export default function App() {
               setMonthKey(key);
               setScreen("expenses");
             }}
+            scopeLabel={scope.type === "personal" ? "Personal" : scope.groupName}
+            scopeOptions={[
+              { key: "personal", label: "Personal" },
+              ...groups.map((g) => ({ key: g.id, label: g.name })),
+            ]}
+            selectedScopeKey={scope.type === "personal" ? "personal" : scope.groupId}
+            onSelectScope={handleSelectHistoryScope}
           />
         )}
 

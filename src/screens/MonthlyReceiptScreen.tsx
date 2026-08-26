@@ -8,7 +8,7 @@ import { NetBalanceRow } from "@/components/receipt/NetBalanceRow";
 import { SettlementRow } from "@/components/receipt/SettlementRow";
 import { TotalsRow } from "@/components/receipt/TotalsRow";
 import { computeMonthSummary, isSplitExpense, personName } from "@/data/selectors";
-import type { Expense, Person } from "@/data/types";
+import type { Category, Expense, Person } from "@/data/types";
 import { useHoldToTrigger } from "@/hooks/useHoldToTrigger";
 import { fetchAnimeMoneyGif } from "@/lib/giphy";
 import { formatCurrency, formatMonthLabel } from "@/lib/format";
@@ -18,6 +18,7 @@ interface MonthlyReceiptScreenProps {
   monthKey: string;
   expenses: Expense[];
   people: Person[];
+  categories: Category[];
   currentUserId: string;
   onPrevMonth: () => void;
   onNextMonth: () => void;
@@ -29,6 +30,7 @@ export function MonthlyReceiptScreen({
   monthKey,
   expenses,
   people,
+  categories,
   currentUserId,
   onPrevMonth,
   onNextMonth,
@@ -145,6 +147,7 @@ export function MonthlyReceiptScreen({
             key={expense.id}
             expense={expense}
             people={people}
+            categories={categories}
             isSplit={isSplitExpense(expense)}
             expanded={expandedIds.has(expense.id)}
             onToggle={() => toggleExpanded(expense.id)}
@@ -172,6 +175,7 @@ export function MonthlyReceiptScreen({
                 key={s.personId}
                 name={personName(people, s.personId)}
                 amount={formatCurrency(s.amount)}
+                owesYou={s.owesYou}
                 indent
               />
             ))}
