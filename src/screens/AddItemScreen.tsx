@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { ChipToggle } from "@/components/primitives/ChipToggle";
 import { Divider } from "@/components/primitives/Divider";
 import { IconButton } from "@/components/primitives/IconButton";
@@ -37,7 +37,8 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
   ref,
 ) {
   const [item, setItem] = useState("");
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState("");
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const [amountStr, setAmountStr] = useState("");
   const [paidBy, setPaidBy] = useState(currentUserId);
   const [dateStr, setDateStr] = useState(() => isoToDDMYYYY(new Date().toISOString()));
@@ -45,6 +46,9 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
   const [participants, setParticipants] = useState<string[]>(people.map((p) => p.id));
   const [customShares, setCustomShares] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | undefined>();
+  const categoryFieldRef = useRef<HTMLDivElement>(null);
+
+  const categoryError = categoryTouched && !categoryId;
 
   const isSolo = people.length <= 1;
   const amount = Number(amountStr) || 0;
@@ -82,6 +86,11 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
   }
 
   function handleSubmit() {
+    if (!categoryId) {
+      setCategoryTouched(true);
+      categoryFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     if (!item.trim() || amount <= 0 || !isoDate) {
       setError(!isoDate ? "ENTER A VALID DATE (D/M/YYYY)" : "ENTER AN ITEM NAME AND AMOUNT");
       return;
@@ -116,12 +125,18 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
 
       <div className="px-5 pb-56">
         <div className="flex flex-col gap-4">
-          <SelectField
-            label="Category"
-            value={categoryId}
-            onChange={setCategoryId}
-            options={categories.map((c) => ({ value: c.id, label: c.name }))}
-          />
+          <div ref={categoryFieldRef}>
+            <SelectField
+              label="Category"
+              value={categoryId}
+              onChange={setCategoryId}
+              options={[
+                { value: "", label: "Select category" },
+                ...categories.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+              error={categoryError}
+            />
+          </div>
           <TextField
             label="What did you spend on?"
             value={item}
