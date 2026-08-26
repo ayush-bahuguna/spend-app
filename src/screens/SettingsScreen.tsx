@@ -2,15 +2,25 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 import { Divider } from "@/components/primitives/Divider";
 import { IconButton } from "@/components/primitives/IconButton";
+import { ScopePill } from "@/components/primitives/ScopePill";
 import { SolidButton } from "@/components/primitives/SolidButton";
 import { TrashIcon } from "@/components/icons/TrashIcon";
 import type { Category } from "@/data/types";
+
+interface ScopeOption {
+  key: string;
+  label: string;
+}
 
 interface SettingsScreenProps {
   categories: Category[];
   onAddCategory: (name: string) => void;
   onRenameCategory: (id: string, name: string) => void;
   onDeleteCategory: (id: string) => void;
+  scopeLabel: string;
+  scopeOptions: ScopeOption[];
+  selectedScopeKey: string;
+  onSelectScope: (key: string) => void;
 }
 
 export function SettingsScreen({
@@ -18,6 +28,10 @@ export function SettingsScreen({
   onAddCategory,
   onRenameCategory,
   onDeleteCategory,
+  scopeLabel,
+  scopeOptions,
+  selectedScopeKey,
+  onSelectScope,
 }: SettingsScreenProps) {
   const [newName, setNewName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
@@ -41,7 +55,18 @@ export function SettingsScreen({
       </div>
 
       <div className="px-5 pb-24">
-        <p className="mt-8 mb-2 text-sm font-bold uppercase tracking-wide">Categories</p>
+        <div className="mt-8 mb-2 flex items-center justify-between gap-2">
+          <p className="text-sm font-bold uppercase tracking-wide">Categories</p>
+          <ScopePill
+            label={scopeLabel}
+            options={scopeOptions}
+            selectedKey={selectedScopeKey}
+            onSelect={onSelectScope}
+          />
+        </div>
+        <p className="mb-2 text-[11px] uppercase tracking-wide text-ink-muted">
+          {selectedScopeKey === "personal" ? "Private to you" : "Shared with everyone in this group"}
+        </p>
         <Divider weight="thin" className="mb-2" />
 
         <div className="flex flex-col">
