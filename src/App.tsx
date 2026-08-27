@@ -84,6 +84,23 @@ export default function App() {
     groupsApi.fetchGroups().then(setGroups).catch(() => {});
   }, [currentUser?.id]);
 
+  // Also refetch every time the Groups screen becomes active — the initial
+  // once-per-login fetch above can occasionally run just before Supabase's
+  // session restore finishes attaching a valid access token (a timing race
+  // on cold start), returning zero rows with no error to catch. Refetching
+  // on every visit self-heals that instead of leaving the user stuck on a
+  // stale empty list for the rest of the session.
+  useEffect(() => {
+    if (!currentUser || screen !== "groups") return;
+    groupsApi.fetchGroups().then(setGroups).catch(() => {});
+  }, [currentUser, screen]);
+
+  // Same idea for categories on the Settings screen.
+  useEffect(() => {
+    if (!currentUser || screen !== "settings") return;
+    categoriesApi.fetchCategories().then(setCategories).catch(() => {});
+  }, [currentUser, screen]);
+
   // Refetch group members every time we enter that group's scope (not just once) —
   // so a newly-joined member becomes visible without needing a full reload.
   useEffect(() => {
