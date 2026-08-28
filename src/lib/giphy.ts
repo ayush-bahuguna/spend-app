@@ -21,7 +21,11 @@ interface GiphySearchResponse {
 // Edgerunners, etc.) rather than leaning on any single franchise.
 const QUERY_POOL = ["anime money", "anime cash", "anime gold", "anime treasure", "anime poor"];
 
-const ANIME_HINT = /anime|funimation|crunchyroll|toei|studio ghibli|shonen|manga|otaku|one piece|naruto|dragon ball|hokuto no ken|lupin|hunter x hunter|jojo|k-on|demon slayer|attack on titan/i;
+// Deliberately show names only — no studio/genre buzzwords (funimation,
+// crunchyroll, toei, otaku, shonen, "anime", "manga") since those matched
+// too loosely against unrelated titles.
+const ANIME_HINT =
+  /one piece|naruto|dragon ball|hokuto no ken|lupin|hunter x hunter|jojo|k-on|demon slayer|attack on titan|ghibli|one punch man|mob psycho|steins gate|hajime no ippo|kochikame|shin chan|doraemon|death note|spy x family|haikyuu|fullmetal alchemist|grand blue|saiki k|fire force|golden boy|jujutsu kaisen|cowboy bebop|chainsaw man|black clover/i;
 
 const CACHE_KEY = "spend:anime-gif-cache:v1";
 const CACHE_TTL_MS = 30 * 60 * 1000;
