@@ -296,7 +296,7 @@ export default function App() {
         )}
       </ReceiptPaper>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 flex justify-center">
+      <div className="flex justify-center">
         <div className="w-full sm:max-w-[26.875rem]">
           {screen === "expenses" && <AddItemFab onClick={() => setScreen("add-item")} />}
           {screen === "add-item" && (
