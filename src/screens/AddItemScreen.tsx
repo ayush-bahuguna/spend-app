@@ -145,7 +145,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
         <Divider weight="thin" className="my-3" />
       </div>
 
-      <div className="px-5 pb-56">
+      <div className="px-5 pb-8">
         <div className="flex flex-col gap-4">
           <div ref={categoryFieldRef}>
             <SelectField

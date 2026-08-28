@@ -11,6 +11,7 @@ import type { Scope } from "@/data/api/expenses";
 import * as groupsApi from "@/data/api/groups";
 import type { Group } from "@/data/api/groups";
 import type { ArchiveEntry, Category, Expense, Person } from "@/data/types";
+import { useAppHeight } from "@/hooks/useAppHeight";
 import { AddItemScreen, type AddItemScreenHandle } from "@/screens/AddItemScreen";
 import { GroupsScreen } from "@/screens/GroupsScreen";
 import { LoginScreen } from "@/screens/LoginScreen";
@@ -44,7 +45,7 @@ function scopeFromKey(key: string, groups: Group[]): Scope {
 
 function AppFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-dvh justify-center bg-paper-alt">
+    <div className="flex h-[var(--app-height,100dvh)] justify-center bg-paper-alt">
       <div className="relative flex h-full w-full flex-col sm:max-w-[26.875rem]">
         {children}
       </div>
@@ -53,6 +54,7 @@ function AppFrame({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
+  useAppHeight();
   const { session, currentUser, signOut } = useAuth();
 
   const [screen, setScreen] = useState<Screen>("expenses");
@@ -290,7 +292,7 @@ export default function App() {
         )}
 
         {screen === "me" && (
-          <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 pt-6 pb-24">
+          <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 pt-6 pb-8">
             <MeScreen currentUser={currentUser} onLogout={signOut} />
           </div>
         )}

@@ -49,7 +49,7 @@ export function MonthArchiveScreen({
           <EmptyState message="Nothing to show yet. Go spend something worth remembering." />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 px-5 pb-24">
+        <div className="grid grid-cols-2 gap-4 px-5 pb-8">
           {entries.map((entry) => (
             <TicketStub
               key={entry.monthKey}

@@ -159,7 +159,7 @@ export function MonthlyReceiptScreen({
         <Divider weight="thin" className="mb-1" />
       </div>
 
-      <div className="px-5 pb-56">
+      <div className="px-5 pb-8">
         {sorted.length === 0 && (
           <EmptyState message="This month's ledger is suspiciously clean. Fix that — add an expense." />
         )}

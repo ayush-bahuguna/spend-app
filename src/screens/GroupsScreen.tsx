@@ -56,7 +56,7 @@ export function GroupsScreen({
         <Divider className="my-3" />
       </div>
 
-      <div className="px-5 pb-40">
+      <div className="px-5 pb-8">
         <p className="mt-8 mb-2 text-sm font-bold uppercase tracking-wide">Your Groups</p>
         <Divider weight="thin" className="mb-2" />
 
