@@ -19,7 +19,7 @@ interface GiphySearchResponse {
 // return actual anime clips across a range of shows (Funimation, One Piece,
 // Uma Musume, Jujutsu Kaisen, Golden Kamuy, Naruto, Demon Slayer, Cyberpunk:
 // Edgerunners, etc.) rather than leaning on any single franchise.
-const QUERY_POOL = ["anime money", "anime cash", "anime broke", "anime gold", "anime treasure", "anime poor"];
+const QUERY_POOL = ["anime money", "anime cash", "anime gold", "anime treasure", "anime poor"];
 
 const ANIME_HINT = /anime|funimation|crunchyroll|toei|studio ghibli|shonen|manga|otaku|one piece|naruto|dragon ball|hokuto no ken|lupin|hunter x hunter|jojo|k-on|demon slayer|attack on titan/i;
 
