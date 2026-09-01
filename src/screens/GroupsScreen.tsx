@@ -90,7 +90,7 @@ export function GroupsScreen({
             placeholder="New group name"
             className="w-full border-b-2 border-ink bg-transparent px-1 py-2 font-mono-receipt text-base text-ink outline-none placeholder:text-ink-muted/60"
           />
-          <SolidButton onClick={handleCreate} fullWidth={false} className="px-4 py-2.5 text-sm">
+          <SolidButton onClick={handleCreate} fullWidth={false} className="w-24 px-4 py-2.5 text-sm">
             Create
           </SolidButton>
         </div>
@@ -105,7 +105,7 @@ export function GroupsScreen({
             maxLength={6}
             className="w-full border-b-2 border-ink bg-transparent px-1 py-2 font-mono-receipt text-base uppercase tracking-[0.3em] text-ink outline-none placeholder:text-ink-muted/60 placeholder:tracking-normal"
           />
-          <SolidButton onClick={handleJoin} fullWidth={false} className="px-4 py-2.5 text-sm">
+          <SolidButton onClick={handleJoin} fullWidth={false} className="w-24 px-4 py-2.5 text-sm">
             Join
           </SolidButton>
         </div>
