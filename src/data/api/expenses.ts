@@ -83,3 +83,24 @@ export async function addExpense(scope: Scope, expense: Expense): Promise<void> 
   });
   if (error) throw error;
 }
+
+export async function updateExpense(expense: Expense): Promise<void> {
+  const { error } = await supabase
+    .from("expenses")
+    .update({
+      date: expense.date,
+      item: expense.item,
+      amount: expense.amount,
+      paid_by: expense.paidBy,
+      category_id: expense.categoryId ?? null,
+      split_type: expense.splitType,
+      splits: expense.splits,
+    })
+    .eq("id", expense.id);
+  if (error) throw error;
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  if (error) throw error;
+}

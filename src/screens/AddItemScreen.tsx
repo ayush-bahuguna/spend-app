@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ChipToggle } from "@/components/primitives/ChipToggle";
 import { Divider } from "@/components/primitives/Divider";
 import { IconButton } from "@/components/primitives/IconButton";
@@ -17,9 +17,11 @@ interface AddItemScreenProps {
   people: Person[];
   categories: Category[];
   currentUserId: string;
+  initialExpense?: Expense;
   onClose: () => void;
-  onAdd: (expense: Expense) => void;
+  onSubmit: (expense: Expense) => void;
   onAddCategory: (name: string) => Promise<Category>;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export interface AddItemScreenHandle {
@@ -36,25 +38,44 @@ const SPLIT_OPTIONS = [
 const NEW_CATEGORY_VALUE = "__new__";
 
 export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>(function AddItemScreen(
-  { people, categories, currentUserId, onClose, onAdd, onAddCategory },
+  { people, categories, currentUserId, initialExpense, onClose, onSubmit, onAddCategory, onDirtyChange },
   ref,
 ) {
-  const [item, setItem] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  // A percentage-split expense only ever persists its computed rupee amounts,
+  // never the original percentage inputs, so there's no way to faithfully
+  // restore "percentage" — it's prefilled as an equivalent value split instead.
+  const initialSplitType: SplitType = initialExpense
+    ? initialExpense.splitType === "percentage"
+      ? "value"
+      : initialExpense.splitType
+    : "equal";
+
+  const [item, setItem] = useState(initialExpense?.item ?? "");
+  const [categoryId, setCategoryId] = useState(initialExpense?.categoryId ?? "");
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [categoryTouched, setCategoryTouched] = useState(false);
-  const [amountStr, setAmountStr] = useState("");
-  const [paidBy, setPaidBy] = useState(currentUserId);
-  const [dateStr, setDateStr] = useState(() => isoToDDMYYYY(new Date().toISOString()));
-  const [splitType, setSplitType] = useState<SplitType>("equal");
-  const [participants, setParticipants] = useState<string[]>(people.map((p) => p.id));
-  const [customShares, setCustomShares] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | undefined>();
+  const [amountStr, setAmountStr] = useState(initialExpense ? String(initialExpense.amount) : "");
+  const [paidBy, setPaidBy] = useState(initialExpense?.paidBy ?? currentUserId);
+  const [dateStr, setDateStr] = useState(() =>
+    isoToDDMYYYY(initialExpense?.date ?? new Date().toISOString()),
+  );
+  const [splitType, setSplitType] = useState<SplitType>(initialSplitType);
+  const [participants, setParticipants] = useState<string[]>(
+    initialExpense ? initialExpense.splits.map((s) => s.personId) : people.map((p) => p.id),
+  );
+  const [customShares, setCustomShares] = useState<Record<string, string>>(() => {
+    if (!initialExpense) return {};
+    if (initialExpense.splitType === "value" || initialExpense.splitType === "percentage") {
+      return Object.fromEntries(initialExpense.splits.map((s) => [s.personId, String(s.amount)]));
+    }
+    return {};
+  });
+  const [touched, setTouched] = useState(false);
+  const [apiError, setApiError] = useState<string | undefined>();
   const categoryFieldRef = useRef<HTMLDivElement>(null);
 
   const isNewCategory = categoryId === NEW_CATEGORY_VALUE;
-  const categoryError = categoryTouched && !categoryId;
-  const newCategoryNameError = categoryTouched && isNewCategory && !newCategoryName.trim();
+  const categoryError = touched && !categoryId;
+  const newCategoryNameError = touched && isNewCategory && !newCategoryName.trim();
 
   function handleCategoryChange(value: string) {
     setCategoryId(value);
@@ -66,6 +87,10 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
   const shareCount = Math.max(participants.length, 1);
   const equalShare = Math.round(amount / shareCount);
   const isoDate = ddmyyyyToISO(dateStr);
+
+  const itemError = touched && !item.trim();
+  const amountError = touched && amount <= 0;
+  const dateError = touched && !isoDate;
 
   const customEntries = people
     .map((p) => ({ id: p.id, value: Number(customShares[p.id]) || 0 }))
@@ -96,17 +121,42 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
     setParticipants((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
 
+  function splitsEqual(a: ExpenseSplit[], b: ExpenseSplit[]): boolean {
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort((x, y) => x.personId.localeCompare(y.personId));
+    const sortedB = [...b].sort((x, y) => x.personId.localeCompare(y.personId));
+    return sortedA.every((s, i) => s.personId === sortedB[i].personId && s.amount === sortedB[i].amount);
+  }
+
+  const isDirty =
+    !initialExpense ||
+    isoDate !== initialExpense.date ||
+    item.trim().toUpperCase() !== initialExpense.item ||
+    amount !== initialExpense.amount ||
+    paidBy !== initialExpense.paidBy ||
+    categoryId !== (initialExpense.categoryId ?? "") ||
+    splitType !== initialSplitType ||
+    !splitsEqual(computedSplits, initialExpense.splits);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty]);
+
   async function handleSubmit() {
-    if (!categoryId || (isNewCategory && !newCategoryName.trim())) {
-      setCategoryTouched(true);
-      categoryFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const invalidCategory = !categoryId || (isNewCategory && !newCategoryName.trim());
+    const invalidItem = !item.trim();
+    const invalidAmount = amount <= 0;
+    const invalidDate = !isoDate;
+
+    if (invalidCategory || invalidItem || invalidAmount || invalidDate) {
+      setTouched(true);
+      if (invalidCategory) {
+        categoryFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
-    if (!item.trim() || amount <= 0 || !isoDate) {
-      setError(!isoDate ? "ENTER A VALID DATE (D/M/YYYY)" : "ENTER AN ITEM NAME AND AMOUNT");
-      return;
-    }
-    setError(undefined);
+    setApiError(undefined);
 
     let resolvedCategoryId = categoryId;
     if (isNewCategory) {
@@ -114,13 +164,13 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
         const created = await onAddCategory(newCategoryName.trim().toUpperCase());
         resolvedCategoryId = created.id;
       } catch {
-        setError("COULDN'T CREATE CATEGORY, TRY AGAIN");
+        setApiError("COULDN'T CREATE CATEGORY, TRY AGAIN");
         return;
       }
     }
 
-    onAdd({
-      id: `e${Date.now()}`,
+    onSubmit({
+      id: initialExpense ? initialExpense.id : `e${Date.now()}`,
       date: isoDate,
       item: item.trim().toUpperCase(),
       amount,
@@ -165,7 +215,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
                 value={newCategoryName}
                 onChange={setNewCategoryName}
                 placeholder="Groceries"
-                error={newCategoryNameError ? "ENTER A CATEGORY NAME" : undefined}
+                error={apiError ?? (newCategoryNameError ? "ENTER A CATEGORY NAME" : undefined)}
                 className="mt-4"
               />
             )}
@@ -175,6 +225,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
             value={item}
             onChange={setItem}
             placeholder="Dinner"
+            error={itemError ? "ENTER AN ITEM NAME" : undefined}
           />
           <TextField
             label="Amount"
@@ -184,7 +235,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
             type="number"
             inputMode="decimal"
             placeholder="0"
-            error={error}
+            error={amountError ? "ENTER AN AMOUNT" : undefined}
           />
           {isSolo ? (
             <TextField
@@ -194,6 +245,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
               type="text"
               inputMode="numeric"
               placeholder="D/M/YYYY"
+              error={dateError ? "ENTER A VALID DATE (D/M/YYYY)" : undefined}
             />
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -210,6 +262,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
                 type="text"
                 inputMode="numeric"
                 placeholder="D/M/YYYY"
+                error={dateError ? "ENTER A VALID DATE" : undefined}
               />
             </div>
           )}

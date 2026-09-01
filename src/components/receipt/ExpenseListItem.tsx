@@ -5,6 +5,7 @@ import { SplitDetailHeaderRow } from "@/components/receipt/SplitDetailHeaderRow"
 import { SplitDetailRow } from "@/components/receipt/SplitDetailRow";
 import { categoryName, personName } from "@/data/selectors";
 import type { Category, Expense, Person } from "@/data/types";
+import { useLongPress } from "@/hooks/useLongPress";
 import { formatCurrency, formatDateShort } from "@/lib/format";
 
 interface ExpenseListItemProps {
@@ -14,6 +15,7 @@ interface ExpenseListItemProps {
   isSplit: boolean;
   expanded: boolean;
   onToggle: () => void;
+  onLongPress: () => void;
 }
 
 export function ExpenseListItem({
@@ -23,9 +25,17 @@ export function ExpenseListItem({
   isSplit,
   expanded,
   onToggle,
+  onLongPress,
 }: ExpenseListItemProps) {
+  const { handlers, consumeLongPressClick } = useLongPress({ onLongPress });
+
+  function handleClick() {
+    if (consumeLongPressClick()) return;
+    onToggle();
+  }
+
   return (
-    <div>
+    <div {...handlers} className="select-none [-webkit-touch-callout:none]">
       <ExpenseRow
         date={formatDateShort(expense.date)}
         item={categoryName(categories, expense.categoryId)}
@@ -33,7 +43,7 @@ export function ExpenseListItem({
         amount={formatCurrency(expense.amount)}
         split={isSplit}
         active={expanded}
-        onClick={onToggle}
+        onClick={handleClick}
       />
       {expanded && (
         <div className="mb-2 flex flex-col gap-2 bg-paper-alt/40 pt-2 pb-1">

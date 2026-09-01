@@ -65,6 +65,8 @@ export default function App() {
   const [groupMembersCache, setGroupMembersCache] = useState<Record<string, Person[]>>({});
   const [categories, setCategories] = useState<Category[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [isEditDirty, setIsEditDirty] = useState(false);
   const addItemRef = useRef<AddItemScreenHandle>(null);
 
   const expensesKey = `${scopeCacheKey(scope)}:${monthKey}`;
@@ -146,6 +148,42 @@ export default function App() {
     await expensesApi.addExpense(scope, expense);
     setExpensesCache((prev) => ({ ...prev, [expensesKey]: [...(prev[expensesKey] ?? []), expense] }));
     setScreen("expenses");
+  }
+
+  function openEditItem(expense: Expense) {
+    setEditingExpense(expense);
+    setIsEditDirty(false);
+    setScreen("add-item");
+  }
+
+  function closeAddItem() {
+    setScreen("expenses");
+    setEditingExpense(null);
+    setIsEditDirty(false);
+  }
+
+  function handleSubmitItem(expense: Expense) {
+    if (editingExpense) updateExpense(expense);
+    else addExpense(expense);
+  }
+
+  function updateExpense(expense: Expense) {
+    setExpensesCache((prev) => ({
+      ...prev,
+      [expensesKey]: (prev[expensesKey] ?? []).map((e) => (e.id === expense.id ? expense : e)),
+    }));
+    setScreen("expenses");
+    setEditingExpense(null);
+    setIsEditDirty(false);
+    expensesApi.updateExpense(expense).catch(() => {});
+  }
+
+  function deleteExpense(id: string) {
+    setExpensesCache((prev) => ({
+      ...prev,
+      [expensesKey]: (prev[expensesKey] ?? []).filter((e) => e.id !== id),
+    }));
+    expensesApi.deleteExpense(id).catch(() => {});
   }
 
   async function handleAddCategory(name: string): Promise<Category> {
@@ -238,6 +276,8 @@ export default function App() {
               scopeOptions={scopeOptions}
               selectedScopeKey={selectedScopeKey}
               onSelectScope={handleSelectScope}
+              onEditExpense={openEditItem}
+              onDeleteExpense={deleteExpense}
             />
           ) : (
             <div className="flex flex-1 items-center justify-center">
@@ -251,9 +291,11 @@ export default function App() {
             people={people}
             categories={categories}
             currentUserId={currentUser.id}
-            onClose={() => setScreen("expenses")}
-            onAdd={addExpense}
+            initialExpense={editingExpense ?? undefined}
+            onClose={closeAddItem}
+            onSubmit={handleSubmitItem}
             onAddCategory={handleAddCategory}
+            onDirtyChange={setIsEditDirty}
           />
         )}
 
@@ -303,10 +345,22 @@ export default function App() {
           {screen === "expenses" && <AddItemFab onClick={() => setScreen("add-item")} />}
           {screen === "add-item" && (
             <ActionBar>
-              <SolidButton onClick={() => addItemRef.current?.submit()}>+ Add To Receipt</SolidButton>
+              <SolidButton
+                onClick={() => addItemRef.current?.submit()}
+                disabled={Boolean(editingExpense) && !isEditDirty}
+              >
+                {editingExpense ? "Save Changes" : "+ Add To Receipt"}
+              </SolidButton>
             </ActionBar>
           )}
-          <BottomNav active={screen as NavSection} onChange={(section) => setScreen(section)} />
+          <BottomNav
+            active={screen as NavSection}
+            onChange={(section) => {
+              setEditingExpense(null);
+              setIsEditDirty(false);
+              setScreen(section);
+            }}
+          />
         </div>
       </div>
     </AppFrame>

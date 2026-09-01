@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 import { Divider } from "@/components/primitives/Divider";
 import { EmptyState } from "@/components/primitives/EmptyState";
 import { GifModal } from "@/components/primitives/GifModal";
 import { ScopePill } from "@/components/primitives/ScopePill";
 import { ColumnHeaderRow } from "@/components/receipt/ColumnHeaderRow";
+import { ExpenseActionSheet } from "@/components/receipt/ExpenseActionSheet";
 import { ExpenseListItem } from "@/components/receipt/ExpenseListItem";
 import { MonthlyReceiptHeader } from "@/components/receipt/MonthlyReceiptHeader";
 import { NetBalanceRow } from "@/components/receipt/NetBalanceRow";
@@ -35,6 +37,8 @@ interface MonthlyReceiptScreenProps {
   scopeOptions: ScopeOption[];
   selectedScopeKey: string;
   onSelectScope: (key: string) => void;
+  onEditExpense: (expense: Expense) => void;
+  onDeleteExpense: (id: string) => void;
 }
 
 export function MonthlyReceiptScreen({
@@ -51,11 +55,15 @@ export function MonthlyReceiptScreen({
   scopeOptions,
   selectedScopeKey,
   onSelectScope,
+  onEditExpense,
+  onDeleteExpense,
 }: MonthlyReceiptScreenProps) {
   const summary = computeMonthSummary(expenses, currentUserId, monthKey, formatMonthLabel(monthKey));
   const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [gifUrl, setGifUrl] = useState<string | null>(null);
+  const [actionSheetTarget, setActionSheetTarget] = useState<Expense | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fadeHeaderRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLParagraphElement>(null);
@@ -154,6 +162,32 @@ export function MonthlyReceiptScreen({
 
       {gifUrl && <GifModal gifUrl={gifUrl} onClose={() => setGifUrl(null)} />}
 
+      {actionSheetTarget && (
+        <ExpenseActionSheet
+          onEdit={() => {
+            onEditExpense(actionSheetTarget);
+            setActionSheetTarget(null);
+          }}
+          onDelete={() => {
+            setDeleteTarget(actionSheetTarget);
+            setActionSheetTarget(null);
+          }}
+          onClose={() => setActionSheetTarget(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          message={`Delete "${deleteTarget.item}"?`}
+          confirmLabel="Delete"
+          onConfirm={() => {
+            onDeleteExpense(deleteTarget.id);
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
       <div className="sticky top-0 z-10 bg-paper px-5 pt-3">
         <ColumnHeaderRow />
         <Divider weight="thin" className="mb-1" />
@@ -172,6 +206,7 @@ export function MonthlyReceiptScreen({
             isSplit={isSplitExpense(expense)}
             expanded={expandedIds.has(expense.id)}
             onToggle={() => toggleExpanded(expense.id)}
+            onLongPress={() => setActionSheetTarget(expense)}
           />
         ))}
 

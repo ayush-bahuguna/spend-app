@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { OutlineButton } from "@/components/primitives/OutlineButton";
 import { SolidButton } from "@/components/primitives/SolidButton";
 
@@ -16,7 +17,11 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  return (
+  // Portaled to document.body so it's never trapped inside an ancestor's
+  // stacking context (ReceiptPaper's `isolation: isolate`, used for the
+  // paper-grain texture, would otherwise paint this beneath the sibling
+  // bottom-nav/CTA stack regardless of z-index) — see GifModal.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-8">
       <div className="receipt-grain w-full max-w-[23.75rem] rounded-xl bg-paper px-5 py-6 sm:max-w-[26.875rem]">
         <p className="relative z-[2] text-center text-sm font-bold uppercase tracking-wide text-ink">
@@ -31,6 +36,7 @@ export function ConfirmDialog({
           </SolidButton>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
