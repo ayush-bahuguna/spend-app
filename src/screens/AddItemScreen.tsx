@@ -230,7 +230,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
             placeholder="Dinner"
             error={itemError ? "ENTER AN ITEM NAME" : undefined}
           />
-          <div className="flex items-end gap-3">
+          <div className="grid grid-cols-2 items-end gap-3">
             <TextField
               label="Amount"
               value={amountStr}
@@ -240,9 +240,13 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
               inputMode="decimal"
               placeholder="0"
               error={amountError ? "ENTER AN AMOUNT" : undefined}
-              className="flex-1"
             />
-            <ChipToggle label="Online Spend" selected={isOnline} onToggle={() => setIsOnline((v) => !v)} />
+            <ChipToggle
+              label="Online Spend"
+              selected={isOnline}
+              onToggle={() => setIsOnline((v) => !v)}
+              className="w-full justify-center"
+            />
           </div>
           {isSolo ? (
             <TextField

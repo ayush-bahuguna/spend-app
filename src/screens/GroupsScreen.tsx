@@ -88,9 +88,9 @@ export function GroupsScreen({
             value={newGroupName}
             onChange={(e) => setNewGroupName(e.target.value)}
             placeholder="New group name"
-            className="w-full border-b-2 border-ink bg-transparent px-1 py-2 font-mono-receipt text-base text-ink outline-none placeholder:text-ink-muted/60"
+            className="min-w-0 flex-1 border-b-2 border-ink bg-transparent px-1 py-2 font-mono-receipt text-base text-ink outline-none placeholder:text-ink-muted/60"
           />
-          <div className="w-24">
+          <div className="w-24 shrink-0">
             <SolidButton onClick={handleCreate} className="px-4 py-2.5 text-sm">
               Create
             </SolidButton>
@@ -105,9 +105,9 @@ export function GroupsScreen({
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
             placeholder="Code"
             maxLength={6}
-            className="w-full border-b-2 border-ink bg-transparent px-1 py-2 font-mono-receipt text-base uppercase tracking-[0.3em] text-ink outline-none placeholder:text-ink-muted/60 placeholder:tracking-normal"
+            className="min-w-0 flex-1 border-b-2 border-ink bg-transparent px-1 py-2 font-mono-receipt text-base uppercase tracking-[0.3em] text-ink outline-none placeholder:text-ink-muted/60 placeholder:tracking-normal"
           />
-          <div className="w-24">
+          <div className="w-24 shrink-0">
             <SolidButton onClick={handleJoin} className="px-4 py-2.5 text-sm">
               Join
             </SolidButton>

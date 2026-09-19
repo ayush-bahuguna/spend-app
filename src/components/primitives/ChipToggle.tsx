@@ -2,9 +2,10 @@ interface ChipToggleProps {
   label: string;
   selected: boolean;
   onToggle: () => void;
+  className?: string;
 }
 
-export function ChipToggle({ label, selected, onToggle }: ChipToggleProps) {
+export function ChipToggle({ label, selected, onToggle, className = "" }: ChipToggleProps) {
   return (
     <button
       type="button"
@@ -14,10 +15,13 @@ export function ChipToggle({ label, selected, onToggle }: ChipToggleProps) {
         "inline-flex items-center gap-1 border-2 border-ink px-3 py-1.5",
         "font-mono-receipt text-xs font-bold uppercase tracking-wide",
         selected ? "bg-ink text-paper" : "bg-transparent text-ink hover:bg-paper-alt",
+        className,
       ].join(" ")}
     >
       {label}
-      {selected && <span aria-hidden="true">✓</span>}
+      <span aria-hidden="true" className={selected ? "" : "invisible"}>
+        ✓
+      </span>
     </button>
   );
 }
