@@ -21,15 +21,17 @@ interface GiphySearchResponse {
 // Edgerunners, etc.) rather than leaning on any single franchise.
 const QUERY_POOL = ["anime money", "anime cash", "anime gold", "anime treasure", "anime poor"];
 
-// Deliberately show names only — no studio/genre buzzwords (funimation,
-// crunchyroll, toei, otaku, shonen, "anime", "manga") since those matched
-// too loosely against unrelated titles.
-const ANIME_HINT =
-  /one piece|naruto|dragon ball|hokuto no ken|lupin|hunter x hunter|jojo|k-on|demon slayer|attack on titan|ghibli|one punch man|mob psycho|steins gate|hajime no ippo|kochikame|shin chan|doraemon|death note|spy x family|haikyuu|fullmetal alchemist|grand blue|saiki k|fire force|golden boy|jujutsu kaisen|cowboy bebop|chainsaw man|black clover/i;
+// Screens out fanservice/thirst-trap results that "anime <money-word>"
+// queries occasionally surface (e.g. shower/bath scenes).
+const NSFW_HINT =
+  /shower|bath(?:ing|tub)?|onsen|hot ?spring|bikini|swimsuit|lingerie|underwear|panties|nude|naked|sexy|thirst|ecchi|boob|breast|cleavage|\bass\b|booty|thicc|jiggl/i;
 
 const CACHE_KEY = "spend:anime-gif-cache:v1";
 const CACHE_TTL_MS = 30 * 60 * 1000;
-const GIFS_PER_WINDOW = 2;
+const GIFS_PER_WINDOW = 15;
+
+// Avoids showing the same GIF twice in a row within a session.
+let lastShownUrl: string | null = null;
 
 interface GifCache {
   urls: string[];
@@ -92,8 +94,11 @@ async function fetchGifBatch(): Promise<string[]> {
       return [];
     }
 
-    const relevant = items.filter((item) => ANIME_HINT.test(item.title ?? ""));
-    const pool = relevant.length > 0 ? relevant : items;
+    const pool = items.filter((item) => !NSFW_HINT.test(item.title ?? ""));
+    if (pool.length === 0) {
+      console.warn("[giphy] all results filtered out as NSFW for query", query);
+      return [];
+    }
 
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     const urls: string[] = [];
@@ -109,15 +114,22 @@ async function fetchGifBatch(): Promise<string[]> {
   }
 }
 
+function pickUrl(urls: string[]): string {
+  const choices = urls.length > 1 ? urls.filter((url) => url !== lastShownUrl) : urls;
+  const pick = choices[Math.floor(Math.random() * choices.length)];
+  lastShownUrl = pick;
+  return pick;
+}
+
 export async function fetchAnimeMoneyGif(): Promise<string | null> {
   const cached = readCache();
   if (cached) {
-    return cached.urls[Math.floor(Math.random() * cached.urls.length)];
+    return pickUrl(cached.urls);
   }
 
   const urls = await fetchGifBatch();
   if (urls.length === 0) return null;
 
   writeCache(urls);
-  return urls[Math.floor(Math.random() * urls.length)];
+  return pickUrl(urls);
 }
