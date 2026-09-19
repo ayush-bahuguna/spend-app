@@ -54,6 +54,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
   const [categoryId, setCategoryId] = useState(initialExpense?.categoryId ?? "");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [amountStr, setAmountStr] = useState(initialExpense ? String(initialExpense.amount) : "");
+  const [isOnline, setIsOnline] = useState(initialExpense?.isOnline ?? false);
   const [paidBy, setPaidBy] = useState(initialExpense?.paidBy ?? currentUserId);
   const [dateStr, setDateStr] = useState(() =>
     isoToDDMYYYY(initialExpense?.date ?? new Date().toISOString()),
@@ -136,6 +137,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
     paidBy !== initialExpense.paidBy ||
     categoryId !== (initialExpense.categoryId ?? "") ||
     splitType !== initialSplitType ||
+    isOnline !== (initialExpense.isOnline ?? false) ||
     !splitsEqual(computedSplits, initialExpense.splits);
 
   useEffect(() => {
@@ -174,6 +176,7 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
       date: isoDate,
       item: item.trim().toUpperCase(),
       amount,
+      isOnline,
       paidBy,
       categoryId: resolvedCategoryId || undefined,
       splitType,
@@ -227,16 +230,20 @@ export const AddItemScreen = forwardRef<AddItemScreenHandle, AddItemScreenProps>
             placeholder="Dinner"
             error={itemError ? "ENTER AN ITEM NAME" : undefined}
           />
-          <TextField
-            label="Amount"
-            value={amountStr}
-            onChange={setAmountStr}
-            prefix="₹"
-            type="number"
-            inputMode="decimal"
-            placeholder="0"
-            error={amountError ? "ENTER AN AMOUNT" : undefined}
-          />
+          <div className="flex items-end gap-3">
+            <TextField
+              label="Amount"
+              value={amountStr}
+              onChange={setAmountStr}
+              prefix="₹"
+              type="number"
+              inputMode="decimal"
+              placeholder="0"
+              error={amountError ? "ENTER AN AMOUNT" : undefined}
+              className="flex-1"
+            />
+            <ChipToggle label="Online Spend" selected={isOnline} onToggle={() => setIsOnline((v) => !v)} />
+          </div>
           {isSolo ? (
             <TextField
               label="Date"

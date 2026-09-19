@@ -9,6 +9,7 @@ interface ExpenseRow {
   date: string;
   item: string;
   amount: number;
+  is_online: boolean | null;
   paid_by: string;
   category_id: string | null;
   split_type: SplitType;
@@ -21,6 +22,7 @@ function rowToExpense(row: ExpenseRow): Expense {
     date: row.date,
     item: row.item,
     amount: Number(row.amount),
+    isOnline: row.is_online ?? false,
     paidBy: row.paid_by,
     categoryId: row.category_id ?? undefined,
     splitType: row.split_type,
@@ -41,7 +43,7 @@ export async function fetchExpensesForMonth(scope: Scope, monthKey: string): Pro
   const { start, end } = monthRange(monthKey);
   let query = supabase
     .from("expenses")
-    .select("id, date, item, amount, paid_by, category_id, split_type, splits")
+    .select("id, date, item, amount, is_online, paid_by, category_id, split_type, splits")
     .gte("date", start)
     .lt("date", end);
 
@@ -75,6 +77,7 @@ export async function addExpense(scope: Scope, expense: Expense): Promise<void> 
     date: expense.date,
     item: expense.item,
     amount: expense.amount,
+    is_online: expense.isOnline,
     paid_by: expense.paidBy,
     category_id: expense.categoryId ?? null,
     split_type: expense.splitType,
@@ -91,6 +94,7 @@ export async function updateExpense(expense: Expense): Promise<void> {
       date: expense.date,
       item: expense.item,
       amount: expense.amount,
+      is_online: expense.isOnline,
       paid_by: expense.paidBy,
       category_id: expense.categoryId ?? null,
       split_type: expense.splitType,

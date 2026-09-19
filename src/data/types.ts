@@ -23,6 +23,7 @@ export interface Expense {
   date: string; // ISO date, e.g. '2026-08-02'
   item: string;
   amount: number;
+  isOnline: boolean;
   paidBy: PersonId;
   categoryId?: string;
   splitType: SplitType;
