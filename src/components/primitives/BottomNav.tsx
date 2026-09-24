@@ -1,12 +1,12 @@
 import {
+  ChartPieSliceFillIcon,
+  ChartPieSliceIcon,
   CoinsFillIcon,
   CoinsIcon,
   GearSixFillIcon,
   GearSixIcon,
   GridFourFillIcon,
   GridFourIcon,
-  ListDashesFillIcon,
-  ListDashesIcon,
   UserFillIcon,
   UserIcon,
 } from "@/components/icons/NavIcons";
@@ -23,7 +23,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 const TABS: { key: NavSection; label: string; icon: IconComponent; iconFilled: IconComponent }[] = [
   { key: "expenses", label: "Expenses", icon: CoinsIcon, iconFilled: CoinsFillIcon },
-  { key: "history", label: "History", icon: ListDashesIcon, iconFilled: ListDashesFillIcon },
+  { key: "history", label: "History", icon: ChartPieSliceIcon, iconFilled: ChartPieSliceFillIcon },
   { key: "groups", label: "Groups", icon: GridFourIcon, iconFilled: GridFourFillIcon },
   { key: "settings", label: "Settings", icon: GearSixIcon, iconFilled: GearSixFillIcon },
   { key: "me", label: "Me", icon: UserIcon, iconFilled: UserFillIcon },

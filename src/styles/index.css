@@ -7,6 +7,10 @@
   --color-paper-alt: #e9e2d2;
   --color-ink: #1c1a17;
   --color-ink-muted: #55524a;
+
+  /* Online vs offline spend in analytics charts. */
+  --color-online: #3d5a80;
+  --color-offline: #6b7a3a;
 }
 
 @utility shadow-pixel {

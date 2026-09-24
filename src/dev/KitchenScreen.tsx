@@ -1,10 +1,30 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { CategoryBreakdown } from "@/components/analytics/CategoryBreakdown";
+import { PersonBreakdown } from "@/components/analytics/PersonBreakdown";
+import { RangeSelector, type RangeKey } from "@/components/analytics/RangeSelector";
+import { SpendOverTime } from "@/components/analytics/SpendOverTime";
+import { TopExpenses } from "@/components/analytics/TopExpenses";
+import { TotalCard, type SpendBasis } from "@/components/analytics/TotalCard";
 import { ActionBar } from "@/components/primitives/ActionBar";
+import { ChipToggle } from "@/components/primitives/ChipToggle";
+import { Divider } from "@/components/primitives/Divider";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { MultiScopePill } from "@/components/primitives/MultiScopePill";
 import { ReceiptPaper } from "@/components/primitives/ReceiptPaper";
 import { SolidButton } from "@/components/primitives/SolidButton";
 import { AddItemFab } from "@/components/receipt/AddItemFab";
 import type { Category, Expense, Person } from "@/data/types";
+import {
+  ANALYTICS_GROUPS,
+  COMPARISON_LABELS,
+  mockByCategory,
+  mockByPerson,
+  mockOverTime,
+  mockTopExpenses,
+  mockTotals,
+} from "@/dev/analyticsMock";
 import { AddItemScreen, type AddItemScreenHandle } from "@/screens/AddItemScreen";
+import { AnalyticsScreen, type AnalyticsData } from "@/screens/AnalyticsScreen";
 import { MonthlyReceiptScreen } from "@/screens/MonthlyReceiptScreen";
 
 // Dev-only playground: exercises the real add/edit/delete/long-press
@@ -91,8 +111,140 @@ const MOCK_EXPENSES: Expense[] = [
 ];
 
 type KitchenScreenState = "expenses" | "add-item";
+type KitchenTab = "receipt" | "parts" | "analytics";
+
+const ANALYTICS_SCOPE_OPTIONS = [
+  { key: "personal", label: "Personal" },
+  ...ANALYTICS_GROUPS.map((g) => ({ key: g.id, label: g.name })),
+];
+
+const KITCHEN_TABS: { key: KitchenTab; label: string }[] = [
+  { key: "receipt", label: "Receipt" },
+  { key: "parts", label: "Parts" },
+  { key: "analytics", label: "Analytics" },
+];
+
+function KitchenSection({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <p className="border-b border-dashed border-ink-muted pb-1 text-[10px] font-bold uppercase tracking-widest text-ink-muted">
+        {name}
+      </p>
+      {children}
+    </section>
+  );
+}
+
+// The assembled Analytics screen exactly as the app will render it.
+function AnalyticsPagePreview() {
+  const [range, setRange] = useState<RangeKey>("this-month");
+  const [scopes, setScopes] = useState<string[]>(ANALYTICS_SCOPE_OPTIONS.map((o) => o.key));
+  const [basis, setBasis] = useState<SpendBasis>("share");
+  const hasGroup = scopes.some((key) => key !== "personal");
+
+  const data: AnalyticsData = {
+    totals: mockTotals(range, scopes),
+    comparisonLabel: COMPARISON_LABELS[range],
+    overTime: mockOverTime(range, scopes, basis),
+    byCategory: mockByCategory(range, scopes, basis),
+    byPerson: hasGroup ? mockByPerson(range, scopes) : undefined,
+    top: mockTopExpenses(range, scopes, basis),
+  };
+
+  return (
+    <AnalyticsScreen
+      range={range}
+      onRangeChange={setRange}
+      scopeOptions={ANALYTICS_SCOPE_OPTIONS}
+      selectedScopes={scopes}
+      onScopesChange={setScopes}
+      basis={basis}
+      onBasisChange={setBasis}
+      currentUserId="p1"
+      data={data}
+    />
+  );
+}
+
+// Each analytics component on its own, labelled, with debug readouts.
+function PartsPlayground() {
+  const [range, setRange] = useState<RangeKey>("this-month");
+  const [scopes, setScopes] = useState<string[]>(ANALYTICS_SCOPE_OPTIONS.map((o) => o.key));
+  const [basis, setBasis] = useState<SpendBasis>("share");
+  const [forceEmpty, setForceEmpty] = useState(false);
+  const totals = mockTotals(range, scopes);
+  // Judge emptiness on the full amounts: a group can have spends that aren't
+  // yours (share = 0), and those should still show the charts.
+  const isEmpty = forceEmpty || totals.full.total === 0;
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 pt-6 pb-8">
+      <h2 className="text-center text-lg font-bold uppercase tracking-widest">Analytics</h2>
+      <Divider className="my-3" />
+      <div className="flex flex-col gap-6">
+        <div className="flex justify-center">
+          <ChipToggle label="Force empty" selected={forceEmpty} onToggle={() => setForceEmpty((v) => !v)} />
+        </div>
+
+        <KitchenSection name="RangeSelector">
+          <RangeSelector value={range} onChange={setRange} />
+          <p className="text-center text-[10px] uppercase tracking-widest text-ink-muted">value: {range}</p>
+        </KitchenSection>
+
+        <KitchenSection name="MultiScopePill">
+          <div className="flex justify-center">
+            <MultiScopePill options={ANALYTICS_SCOPE_OPTIONS} selectedKeys={scopes} onChange={setScopes} />
+          </div>
+          <p className="text-center text-[10px] uppercase tracking-widest text-ink-muted">
+            value: {scopes.join(", ")}
+          </p>
+        </KitchenSection>
+
+        {isEmpty ? (
+          <KitchenSection name="EmptyState (whole selection)">
+            <EmptyState message="Not a rupee spent in this stretch. Very disciplined, or very forgetful." />
+          </KitchenSection>
+        ) : (
+          <>
+            <KitchenSection name="TotalCard">
+              <TotalCard
+                share={totals.share}
+                full={totals.full}
+                basis={basis}
+                onBasisChange={setBasis}
+                comparisonLabel={COMPARISON_LABELS[range]}
+              />
+              <p className="text-center text-[10px] uppercase tracking-widest text-ink-muted">basis: {basis}</p>
+            </KitchenSection>
+
+            <KitchenSection name="SpendOverTime">
+              {/* Keyed on the range so a tapped bar doesn't carry over to a different axis. */}
+              <SpendOverTime key={range} buckets={mockOverTime(range, scopes, basis)} />
+            </KitchenSection>
+
+            <KitchenSection name="CategoryBreakdown">
+              <CategoryBreakdown rows={mockByCategory(range, scopes, basis)} />
+            </KitchenSection>
+
+            {/* Only meaningful with at least one group selected. */}
+            {scopes.some((key) => key !== "personal") && (
+              <KitchenSection name="PersonBreakdown">
+                <PersonBreakdown rows={mockByPerson(range, scopes)} currentUserId="p1" />
+              </KitchenSection>
+            )}
+
+            <KitchenSection name="TopExpenses">
+              <TopExpenses rows={mockTopExpenses(range, scopes, basis)} />
+            </KitchenSection>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function KitchenScreen() {
+  const [tab, setTab] = useState<KitchenTab>("receipt");
   const [screen, setScreen] = useState<KitchenScreenState>("expenses");
   const [expenses, setExpenses] = useState<Expense[]>(MOCK_EXPENSES);
   const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
@@ -137,8 +289,26 @@ export function KitchenScreen() {
         <div className="bg-ink px-3 py-1 text-center font-mono-receipt text-[10px] font-bold uppercase tracking-widest text-paper">
           Dev Playground — Mock Data
         </div>
+        <div className="flex border-b-2 border-ink bg-paper">
+          {KITCHEN_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={[
+                "flex-1 py-2 font-mono-receipt text-xs font-bold uppercase tracking-widest",
+                tab === t.key ? "bg-ink text-paper" : "text-ink-muted hover:text-ink",
+              ].join(" ")}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
         <ReceiptPaper>
-          {screen === "expenses" && (
+          {tab === "parts" && <PartsPlayground />}
+          {tab === "analytics" && <AnalyticsPagePreview />}
+
+          {tab === "receipt" && screen === "expenses" && (
             <MonthlyReceiptScreen
               monthKey="2026-09"
               expenses={expenses}
@@ -158,7 +328,7 @@ export function KitchenScreen() {
             />
           )}
 
-          {screen === "add-item" && (
+          {tab === "receipt" && screen === "add-item" && (
             <AddItemScreen
               ref={addItemRef}
               people={MOCK_PEOPLE}
@@ -175,8 +345,10 @@ export function KitchenScreen() {
 
         <div className="flex justify-center">
           <div className="w-full sm:max-w-[26.875rem]">
-            {screen === "expenses" && <AddItemFab onClick={() => setScreen("add-item")} />}
-            {screen === "add-item" && (
+            {tab === "receipt" && screen === "expenses" && (
+              <AddItemFab onClick={() => setScreen("add-item")} />
+            )}
+            {tab === "receipt" && screen === "add-item" && (
               <ActionBar>
                 <SolidButton
                   onClick={() => addItemRef.current?.submit()}
