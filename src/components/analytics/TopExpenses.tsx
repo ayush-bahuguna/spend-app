@@ -14,7 +14,7 @@ export interface TopExpenseRow {
 const TOP_COUNT = 5;
 
 // # / DATE / ITEM / AMOUNT — narrower cousin of the receipt's RECEIPT_GRID_COLS.
-const TOP_GRID_COLS = "grid-cols-[1.25rem_3.4rem_1fr_auto] sm:grid-cols-[1.25rem_3.8rem_1fr_auto]";
+const TOP_GRID_COLS = "grid-cols-[1.25rem_3.4rem_1fr_auto]";
 
 interface TopExpensesProps {
   rows: TopExpenseRow[];
@@ -35,12 +35,12 @@ export function TopExpenses({ rows }: TopExpensesProps) {
           {top.map((row, i) => (
             <li
               key={row.id}
-              className={`grid ${TOP_GRID_COLS} items-start gap-2 border-b border-dashed border-ink-muted/50 py-1.5 text-xs last:border-b-0 sm:text-sm`}
+              className={`grid ${TOP_GRID_COLS} items-start gap-2 border-b border-dashed border-ink-muted/50 py-1.5 text-xs uppercase tracking-wide last:border-b-0`}
             >
               <span className="font-bold text-ink-muted">{i + 1}.</span>
               <span className="whitespace-nowrap text-ink-muted">{formatDateShort(row.date)}</span>
               <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="break-words uppercase">{row.item}</span>
+                <span className="break-words">{row.item}</span>
                 <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-ink-muted">
                   <span
                     aria-label={row.isOnline ? "Online" : "Offline"}
