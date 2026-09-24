@@ -12,7 +12,7 @@ import {
 } from "@/components/icons/NavIcons";
 import type { ComponentType, SVGProps } from "react";
 
-export type NavSection = "expenses" | "history" | "groups" | "settings" | "me";
+export type NavSection = "expenses" | "stats" | "groups" | "settings" | "me";
 
 interface BottomNavProps {
   active: NavSection;
@@ -23,7 +23,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 const TABS: { key: NavSection; label: string; icon: IconComponent; iconFilled: IconComponent }[] = [
   { key: "expenses", label: "Expenses", icon: CoinsIcon, iconFilled: CoinsFillIcon },
-  { key: "history", label: "History", icon: ChartPieSliceIcon, iconFilled: ChartPieSliceFillIcon },
+  { key: "stats", label: "Stats", icon: ChartPieSliceIcon, iconFilled: ChartPieSliceFillIcon },
   { key: "groups", label: "Groups", icon: GridFourIcon, iconFilled: GridFourFillIcon },
   { key: "settings", label: "Settings", icon: GearSixIcon, iconFilled: GearSixFillIcon },
   { key: "me", label: "Me", icon: UserIcon, iconFilled: UserFillIcon },

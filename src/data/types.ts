@@ -46,8 +46,6 @@ export interface MonthSummary {
   netBalance: number;
 }
 
-export interface ArchiveEntry {
-  monthKey: string;
-  shortLabel: string;
-  total: number;
-}
+// An expense plus the scope it belongs to (null = personal), for views like
+// Stats that pull from several scopes at once.
+export type ScopedExpense = Expense & { groupId: string | null };

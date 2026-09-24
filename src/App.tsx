@@ -4,19 +4,22 @@ import { ActionBar } from "@/components/primitives/ActionBar";
 import { BottomNav, type NavSection } from "@/components/primitives/BottomNav";
 import { ReceiptPaper } from "@/components/primitives/ReceiptPaper";
 import { SolidButton } from "@/components/primitives/SolidButton";
+import type { RangeKey } from "@/components/analytics/RangeSelector";
+import type { SpendBasis } from "@/components/analytics/TotalCard";
 import { AddItemFab } from "@/components/receipt/AddItemFab";
+import { computeAnalytics, rangeWindow } from "@/data/analytics";
 import * as categoriesApi from "@/data/api/categories";
 import * as expensesApi from "@/data/api/expenses";
 import type { Scope } from "@/data/api/expenses";
 import * as groupsApi from "@/data/api/groups";
 import type { Group } from "@/data/api/groups";
-import type { ArchiveEntry, Category, Expense, Person } from "@/data/types";
+import type { Category, Expense, Person, ScopedExpense } from "@/data/types";
 import { useAppHeight } from "@/hooks/useAppHeight";
 import { AddItemScreen, type AddItemScreenHandle } from "@/screens/AddItemScreen";
+import { AnalyticsScreen } from "@/screens/AnalyticsScreen";
 import { GroupsScreen } from "@/screens/GroupsScreen";
 import { LoginScreen } from "@/screens/LoginScreen";
 import { MeScreen } from "@/screens/MeScreen";
-import { MonthArchiveScreen } from "@/screens/MonthArchiveScreen";
 import { MonthlyReceiptScreen } from "@/screens/MonthlyReceiptScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 
@@ -61,7 +64,11 @@ export default function App() {
   const [scope, setScope] = useState<Scope>({ type: "personal" });
   const [monthKey, setMonthKey] = useState(currentMonthKey);
   const [expensesCache, setExpensesCache] = useState<Record<string, Expense[]>>({});
-  const [archiveCache, setArchiveCache] = useState<Record<string, ArchiveEntry[]>>({});
+  const [statsRange, setStatsRange] = useState<RangeKey>("this-month");
+  // null = every scope, including groups joined later.
+  const [statsScopes, setStatsScopes] = useState<string[] | null>(null);
+  const [statsBasis, setStatsBasis] = useState<SpendBasis>("share");
+  const [statsCache, setStatsCache] = useState<Record<string, ScopedExpense[]>>({});
   const [groupMembersCache, setGroupMembersCache] = useState<Record<string, Person[]>>({});
   const [categories, setCategories] = useState<Category[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -70,9 +77,7 @@ export default function App() {
   const addItemRef = useRef<AddItemScreenHandle>(null);
 
   const expensesKey = `${scopeCacheKey(scope)}:${monthKey}`;
-  const archiveKey = scopeCacheKey(scope);
   const expenses = expensesCache[expensesKey];
-  const archiveEntries = archiveCache[archiveKey] ?? [];
   const people: Person[] =
     scope.type === "personal" ? (currentUser ? [currentUser] : []) : (groupMembersCache[scope.groupId] ?? []);
   const scopeLabel = scope.type === "personal" ? "Personal" : scope.groupName;
@@ -81,6 +86,33 @@ export default function App() {
     ...groups.map((g) => ({ key: g.id, label: g.name })),
   ];
   const selectedScopeKey = scope.type === "personal" ? "personal" : scope.groupId;
+
+  // Stats: a saved selection can name a group the user has since left, so
+  // keep only live scopes and fall back to all of them if none survive.
+  const allScopeKeys = scopeOptions.map((o) => o.key);
+  const liveStatsScopes = (statsScopes ?? allScopeKeys).filter((k) => allScopeKeys.includes(k));
+  const selectedStatsScopes = liveStatsScopes.length > 0 ? liveStatsScopes : allScopeKeys;
+  const statsGroupIds = selectedStatsScopes.filter((k) => k !== "personal");
+  const statsWindow = rangeWindow(statsRange);
+  const statsKey = `${statsRange}:${[...selectedStatsScopes].sort().join(",")}`;
+  const statsExpenses = statsCache[statsKey];
+  const statsPeople: Person[] = [
+    ...(currentUser ? [currentUser] : []),
+    ...statsGroupIds.flatMap((id) => groupMembersCache[id] ?? []),
+  ].filter((p, i, all) => all.findIndex((q) => q.id === p.id) === i);
+  const statsData =
+    statsExpenses && currentUser
+      ? computeAnalytics(statsExpenses, {
+          range: statsRange,
+          window: statsWindow,
+          basis: statsBasis,
+          currentUserId: currentUser.id,
+          categories,
+          people: statsPeople,
+          groupNames: Object.fromEntries(groups.map((g) => [g.id, g.name])),
+          includePeople: statsGroupIds.length > 0,
+        })
+      : undefined;
 
   useEffect(() => {
     if (!currentUser) return;
@@ -129,16 +161,27 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, scope, monthKey, groupMembersCache, screen]);
 
-  // Same idea for History — refetch every time it becomes active.
+  // Same idea for Stats — refetch every time it becomes active (or the range /
+  // scopes change). One query covers the range and its comparison period.
   useEffect(() => {
-    if (!currentUser || screen !== "history") return;
-    if (scope.type === "group" && !groupMembersCache[scope.groupId]) return;
+    if (!currentUser || screen !== "stats") return;
     expensesApi
-      .fetchMonthlyTotals(scope)
-      .then((entries) => setArchiveCache((prev) => ({ ...prev, [archiveKey]: entries })))
+      .fetchExpensesInRange(
+        { personal: selectedStatsScopes.includes("personal"), groupIds: statsGroupIds },
+        statsWindow.prevStart,
+        statsWindow.end,
+      )
+      .then((data) => setStatsCache((prev) => ({ ...prev, [statsKey]: data })))
       .catch(() => {});
+    // Member names for By Person; refetched so new joiners show up.
+    for (const groupId of statsGroupIds) {
+      groupsApi
+        .fetchGroupMembers(groupId)
+        .then((members) => setGroupMembersCache((prev) => ({ ...prev, [groupId]: members })))
+        .catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, scope, groupMembersCache, screen]);
+  }, [currentUser, screen, statsKey]);
 
   function goToMonth(delta: number) {
     setMonthKey((prev) => shiftMonthKey(prev, delta));
@@ -239,6 +282,11 @@ export default function App() {
     setScope(scopeFromKey(key, groups));
   }
 
+  function handleSelectStatsScopes(keys: string[]) {
+    // Picking everything means "all", so groups joined later are included too.
+    setStatsScopes(allScopeKeys.every((k) => keys.includes(k)) ? null : keys);
+  }
+
   if (session === undefined) {
     return (
       <AppFrame>
@@ -299,18 +347,17 @@ export default function App() {
           />
         )}
 
-        {screen === "history" && (
-          <MonthArchiveScreen
-            entries={archiveEntries}
-            currentMonthKey={monthKey}
-            onSelectMonth={(key) => {
-              setMonthKey(key);
-              setScreen("expenses");
-            }}
-            scopeLabel={scopeLabel}
+        {screen === "stats" && (
+          <AnalyticsScreen
+            range={statsRange}
+            onRangeChange={setStatsRange}
             scopeOptions={scopeOptions}
-            selectedScopeKey={selectedScopeKey}
-            onSelectScope={handleSelectScope}
+            selectedScopes={selectedStatsScopes}
+            onScopesChange={handleSelectStatsScopes}
+            basis={statsBasis}
+            onBasisChange={setStatsBasis}
+            currentUserId={currentUser.id}
+            data={statsData}
           />
         )}
 

@@ -22,12 +22,6 @@ export function formatMonthLabel(monthKey: string): string {
   return d.toLocaleString("en-US", { month: "long", year: "numeric" }).toUpperCase();
 }
 
-export function formatMonthShortLabel(monthKey: string): string {
-  const [year, month] = monthKey.split("-").map(Number);
-  const d = new Date(year, month - 1, 1);
-  return d.toLocaleString("en-US", { month: "short", year: "numeric" }).toUpperCase();
-}
-
 // "D/M/YYYY" (typed via a numeric keypad) <-> ISO "YYYY-MM-DD" (stored form).
 export function isoToDDMYYYY(iso: string): string {
   const d = new Date(iso);

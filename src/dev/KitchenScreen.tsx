@@ -14,17 +14,9 @@ import { ReceiptPaper } from "@/components/primitives/ReceiptPaper";
 import { SolidButton } from "@/components/primitives/SolidButton";
 import { AddItemFab } from "@/components/receipt/AddItemFab";
 import type { Category, Expense, Person } from "@/data/types";
-import {
-  ANALYTICS_GROUPS,
-  COMPARISON_LABELS,
-  mockByCategory,
-  mockByPerson,
-  mockOverTime,
-  mockTopExpenses,
-  mockTotals,
-} from "@/dev/analyticsMock";
+import { ANALYTICS_GROUPS, mockAnalytics } from "@/dev/analyticsMock";
 import { AddItemScreen, type AddItemScreenHandle } from "@/screens/AddItemScreen";
-import { AnalyticsScreen, type AnalyticsData } from "@/screens/AnalyticsScreen";
+import { AnalyticsScreen } from "@/screens/AnalyticsScreen";
 import { MonthlyReceiptScreen } from "@/screens/MonthlyReceiptScreen";
 
 // Dev-only playground: exercises the real add/edit/delete/long-press
@@ -121,7 +113,7 @@ const ANALYTICS_SCOPE_OPTIONS = [
 const KITCHEN_TABS: { key: KitchenTab; label: string }[] = [
   { key: "receipt", label: "Receipt" },
   { key: "parts", label: "Parts" },
-  { key: "analytics", label: "Analytics" },
+  { key: "analytics", label: "Stats" },
 ];
 
 function KitchenSection({ name, children }: { name: string; children: ReactNode }) {
@@ -135,21 +127,12 @@ function KitchenSection({ name, children }: { name: string; children: ReactNode 
   );
 }
 
-// The assembled Analytics screen exactly as the app will render it.
+// The assembled Stats screen exactly as the app renders it, fed by the real
+// aggregation over mock expenses.
 function AnalyticsPagePreview() {
   const [range, setRange] = useState<RangeKey>("this-month");
   const [scopes, setScopes] = useState<string[]>(ANALYTICS_SCOPE_OPTIONS.map((o) => o.key));
   const [basis, setBasis] = useState<SpendBasis>("share");
-  const hasGroup = scopes.some((key) => key !== "personal");
-
-  const data: AnalyticsData = {
-    totals: mockTotals(range, scopes),
-    comparisonLabel: COMPARISON_LABELS[range],
-    overTime: mockOverTime(range, scopes, basis),
-    byCategory: mockByCategory(range, scopes, basis),
-    byPerson: hasGroup ? mockByPerson(range, scopes) : undefined,
-    top: mockTopExpenses(range, scopes, basis),
-  };
 
   return (
     <AnalyticsScreen
@@ -161,7 +144,7 @@ function AnalyticsPagePreview() {
       basis={basis}
       onBasisChange={setBasis}
       currentUserId="p1"
-      data={data}
+      data={mockAnalytics(range, scopes, basis)}
     />
   );
 }
@@ -172,14 +155,14 @@ function PartsPlayground() {
   const [scopes, setScopes] = useState<string[]>(ANALYTICS_SCOPE_OPTIONS.map((o) => o.key));
   const [basis, setBasis] = useState<SpendBasis>("share");
   const [forceEmpty, setForceEmpty] = useState(false);
-  const totals = mockTotals(range, scopes);
+  const data = mockAnalytics(range, scopes, basis);
   // Judge emptiness on the full amounts: a group can have spends that aren't
   // yours (share = 0), and those should still show the charts.
-  const isEmpty = forceEmpty || totals.full.total === 0;
+  const isEmpty = forceEmpty || data.totals.full.total === 0;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 pt-6 pb-8">
-      <h2 className="text-center text-lg font-bold uppercase tracking-widest">Analytics</h2>
+      <h2 className="text-center text-lg font-bold uppercase tracking-widest">Stats Parts</h2>
       <Divider className="my-3" />
       <div className="flex flex-col gap-6">
         <div className="flex justify-center">
@@ -208,33 +191,32 @@ function PartsPlayground() {
           <>
             <KitchenSection name="TotalCard">
               <TotalCard
-                share={totals.share}
-                full={totals.full}
+                share={data.totals.share}
+                full={data.totals.full}
                 basis={basis}
                 onBasisChange={setBasis}
-                comparisonLabel={COMPARISON_LABELS[range]}
+                comparisonLabel={data.comparisonLabel}
               />
               <p className="text-center text-[10px] uppercase tracking-widest text-ink-muted">basis: {basis}</p>
             </KitchenSection>
 
             <KitchenSection name="SpendOverTime">
               {/* Keyed on the range so a tapped bar doesn't carry over to a different axis. */}
-              <SpendOverTime key={range} buckets={mockOverTime(range, scopes, basis)} />
+              <SpendOverTime key={range} buckets={data.overTime} />
             </KitchenSection>
 
             <KitchenSection name="CategoryBreakdown">
-              <CategoryBreakdown rows={mockByCategory(range, scopes, basis)} />
+              <CategoryBreakdown rows={data.byCategory} />
             </KitchenSection>
 
-            {/* Only meaningful with at least one group selected. */}
-            {scopes.some((key) => key !== "personal") && (
+            {data.byPerson && (
               <KitchenSection name="PersonBreakdown">
-                <PersonBreakdown rows={mockByPerson(range, scopes)} currentUserId="p1" />
+                <PersonBreakdown rows={data.byPerson} currentUserId="p1" />
               </KitchenSection>
             )}
 
             <KitchenSection name="TopExpenses">
-              <TopExpenses rows={mockTopExpenses(range, scopes, basis)} />
+              <TopExpenses rows={data.top} />
             </KitchenSection>
           </>
         )}

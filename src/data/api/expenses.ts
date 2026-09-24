@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import type { ArchiveEntry, Expense, ExpenseSplit, SplitType } from "@/data/types";
-import { formatMonthShortLabel } from "@/lib/format";
+import type { Expense, ExpenseSplit, ScopedExpense, SplitType } from "@/data/types";
 
 export type Scope = { type: "personal" } | { type: "group"; groupId: string; groupName: string };
 
@@ -54,22 +53,36 @@ export async function fetchExpensesForMonth(scope: Scope, monthKey: string): Pro
   return (data ?? []).map(rowToExpense);
 }
 
-export async function fetchMonthlyTotals(scope: Scope): Promise<ArchiveEntry[]> {
-  let query = supabase.from("expenses").select("date, amount");
-  query = scope.type === "personal" ? query.is("group_id", null) : query.eq("group_id", scope.groupId);
+export interface MultiScope {
+  personal: boolean;
+  groupIds: string[];
+}
 
-  const { data, error } = await query;
+// Expenses dated in [start, end) across personal and/or several groups at once.
+export async function fetchExpensesInRange(
+  scopes: MultiScope,
+  start: string,
+  end: string,
+): Promise<ScopedExpense[]> {
+  if (!scopes.personal && scopes.groupIds.length === 0) return [];
+
+  let query = supabase
+    .from("expenses")
+    .select("id, date, item, amount, is_online, paid_by, category_id, split_type, splits, group_id")
+    .gte("date", start)
+    .lt("date", end);
+
+  const inGroups = `group_id.in.(${scopes.groupIds.join(",")})`;
+  if (scopes.personal && scopes.groupIds.length > 0) query = query.or(`group_id.is.null,${inGroups}`);
+  else if (scopes.personal) query = query.is("group_id", null);
+  else query = query.in("group_id", scopes.groupIds);
+
+  const { data, error } = await query.order("date", { ascending: true });
   if (error) throw error;
-
-  const totals = new Map<string, number>();
-  for (const row of data ?? []) {
-    const monthKey = String(row.date).slice(0, 7);
-    totals.set(monthKey, (totals.get(monthKey) ?? 0) + Number(row.amount));
-  }
-
-  return Array.from(totals.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([monthKey, total]) => ({ monthKey, shortLabel: formatMonthShortLabel(monthKey), total }));
+  return (data ?? []).map((row: ExpenseRow & { group_id: string | null }) => ({
+    ...rowToExpense(row),
+    groupId: row.group_id,
+  }));
 }
 
 export async function addExpense(scope: Scope, expense: Expense): Promise<void> {
