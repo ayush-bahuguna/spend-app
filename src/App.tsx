@@ -67,7 +67,7 @@ export default function App() {
   const [statsRange, setStatsRange] = useState<RangeKey>("this-month");
   // null = every scope, including groups joined later.
   const [statsScopes, setStatsScopes] = useState<string[] | null>(null);
-  const [statsBasis, setStatsBasis] = useState<SpendBasis>("share");
+  const [statsBasis, setStatsBasis] = useState<SpendBasis>("total");
   const [statsCache, setStatsCache] = useState<Record<string, ScopedExpense[]>>({});
   const [groupMembersCache, setGroupMembersCache] = useState<Record<string, Person[]>>({});
   const [categories, setCategories] = useState<Category[]>([]);

@@ -10,9 +10,10 @@ export interface TotalFigures {
   online: number;
 }
 
+// Total spent leads; your share is the swipe-away second view.
 const SLIDES: { basis: SpendBasis; label: string }[] = [
-  { basis: "share", label: "My Share" },
   { basis: "total", label: "Total Spent" },
+  { basis: "share", label: "My Share" },
 ];
 
 interface TotalCardProps {
@@ -101,6 +102,7 @@ interface TotalSlideProps {
 
 function TotalSlide({ label, figures, comparisonLabel }: TotalSlideProps) {
   const { total, prevTotal, online } = figures;
+  const offline = total - online;
   const onlinePct = total > 0 ? Math.round((online / total) * 100) : 0;
 
   return (
@@ -108,16 +110,46 @@ function TotalSlide({ label, figures, comparisonLabel }: TotalSlideProps) {
       <p className="text-xs font-bold uppercase tracking-widest text-ink-muted">{label}</p>
       <p className="text-3xl font-bold tracking-wide">{formatCurrency(Math.round(total))}</p>
       <p className="text-[11px] uppercase tracking-wide text-ink-muted">
-        {changeText(total, prevTotal)} {comparisonLabel}
+        {changeText(total, prevTotal)}
+        {/* The rupee difference behind the %, only when there is a % to explain. */}
+        {prevTotal > 0 && Math.round(total) !== Math.round(prevTotal) && (
+          <>
+            {" "}
+            (<span className="font-bold text-ink">{formatCurrency(Math.abs(Math.round(total - prevTotal)))}</span>)
+          </>
+        )}{" "}
+        {comparisonLabel}
       </p>
       {total > 0 && (
         <>
           <Divider weight="thin" className="my-2" />
-          <p className="text-[11px] uppercase tracking-wide text-ink-muted">
-            Online {onlinePct}% · Offline {100 - onlinePct}%
-          </p>
+          <div className="grid w-full grid-cols-2 text-[11px] uppercase tracking-wide text-ink-muted">
+            <SplitFigure swatch="bg-online" label="Online" amount={online} pct={onlinePct} />
+            <SplitFigure swatch="bg-offline" label="Offline" amount={offline} pct={100 - onlinePct} />
+          </div>
         </>
       )}
+    </div>
+  );
+}
+
+interface SplitFigureProps {
+  swatch: string;
+  label: string;
+  amount: number;
+  pct: number;
+}
+
+function SplitFigure({ swatch, label, amount, pct }: SplitFigureProps) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="flex items-center gap-1">
+        <span aria-hidden="true" className={`h-2 w-2 ${swatch}`} />
+        {label}
+      </span>
+      <span>
+        <span className="font-bold text-ink">{formatCurrency(Math.round(amount))}</span> · {pct}%
+      </span>
     </div>
   );
 }

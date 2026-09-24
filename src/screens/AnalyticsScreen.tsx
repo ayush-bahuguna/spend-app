@@ -65,10 +65,10 @@ export function AnalyticsScreen({
               onBasisChange={onBasisChange}
               comparisonLabel={data.comparisonLabel}
             />
+            {data.byPerson && <PersonBreakdown rows={data.byPerson} currentUserId={currentUserId} />}
+            <CategoryBreakdown rows={data.byCategory} />
             {/* Keyed on the range so a tapped bar doesn't carry over to a different axis. */}
             <SpendOverTime key={range} buckets={data.overTime} />
-            <CategoryBreakdown rows={data.byCategory} />
-            {data.byPerson && <PersonBreakdown rows={data.byPerson} currentUserId={currentUserId} />}
             <TopExpenses rows={data.top} />
           </div>
         )}

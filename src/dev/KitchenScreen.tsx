@@ -132,7 +132,7 @@ function KitchenSection({ name, children }: { name: string; children: ReactNode 
 function AnalyticsPagePreview() {
   const [range, setRange] = useState<RangeKey>("this-month");
   const [scopes, setScopes] = useState<string[]>(ANALYTICS_SCOPE_OPTIONS.map((o) => o.key));
-  const [basis, setBasis] = useState<SpendBasis>("share");
+  const [basis, setBasis] = useState<SpendBasis>("total");
 
   return (
     <AnalyticsScreen
@@ -153,7 +153,7 @@ function AnalyticsPagePreview() {
 function PartsPlayground() {
   const [range, setRange] = useState<RangeKey>("this-month");
   const [scopes, setScopes] = useState<string[]>(ANALYTICS_SCOPE_OPTIONS.map((o) => o.key));
-  const [basis, setBasis] = useState<SpendBasis>("share");
+  const [basis, setBasis] = useState<SpendBasis>("total");
   const [forceEmpty, setForceEmpty] = useState(false);
   const data = mockAnalytics(range, scopes, basis);
   // Judge emptiness on the full amounts: a group can have spends that aren't
@@ -200,20 +200,20 @@ function PartsPlayground() {
               <p className="text-center text-[10px] uppercase tracking-widest text-ink-muted">basis: {basis}</p>
             </KitchenSection>
 
-            <KitchenSection name="SpendOverTime">
-              {/* Keyed on the range so a tapped bar doesn't carry over to a different axis. */}
-              <SpendOverTime key={range} buckets={data.overTime} />
-            </KitchenSection>
-
-            <KitchenSection name="CategoryBreakdown">
-              <CategoryBreakdown rows={data.byCategory} />
-            </KitchenSection>
-
             {data.byPerson && (
               <KitchenSection name="PersonBreakdown">
                 <PersonBreakdown rows={data.byPerson} currentUserId="p1" />
               </KitchenSection>
             )}
+
+            <KitchenSection name="CategoryBreakdown">
+              <CategoryBreakdown rows={data.byCategory} />
+            </KitchenSection>
+
+            <KitchenSection name="SpendOverTime">
+              {/* Keyed on the range so a tapped bar doesn't carry over to a different axis. */}
+              <SpendOverTime key={range} buckets={data.overTime} />
+            </KitchenSection>
 
             <KitchenSection name="TopExpenses">
               <TopExpenses rows={data.top} />
